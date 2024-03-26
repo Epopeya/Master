@@ -15,7 +15,7 @@
 #define DIR_KI 0
 #define DIR_KD 0.02
 
-#define LIDAR_SMOOTHING 0.1f // lower = more smoothing
+#define LIDAR_SMOOTHING 0.1f  // lower = more smoothing
 #define LIDAR_INV_SMOOTHING (1 - LIDAR_SMOOTHING)
 #define LIDAR_CHECK_ANGLE 15
 
@@ -60,14 +60,21 @@ float left_distance = 0.0f;
 float right_distance = 0.0f;
 float front_distance = 0.0f;
 
+enum SerialCommands {
+  SerialMotor,
+  SerialServo,
+  SerialEncoder,
+  SerialBattery
+};
+
 void motorSpeed(int speed) {
-  hs.print("M");
-  hs.println(speed);
+  hs.write(SerialMotor);
+  hs.write((uint8_t *)&speed, sizeof(int));
 }
 
 void servoAngle(int angle) {
-  hs.print("S");
-  hs.println(angle);
+  hs.write(SerialServo);
+  hs.write((uint8_t *)&angle, sizeof(int));
 }
 
 // use absloute angle for this
@@ -200,11 +207,27 @@ void setup() {
 int currentTurn = 0;
 
 void loop() {
-  // update position
+  // Receive messages on HardwareSerial 1
   if (hs.available() > 0) {
-    int encoders = hs.readStringUntil('\n').toInt() * MILIMETERS_PER_ENCODER;
-    posX += encoders * dirX;
-    posY += encoders * dirY;
+    int header = hs.read();
+    switch (header) {
+      // Update position
+      case SerialEncoder:
+        {
+          uint8_t encoders = 0;
+          hs.readBytes(&encoders, 1);
+          encoders *= MILIMETERS_PER_ENCODER;
+          posX += encoders * dirX;
+          posY += encoders * dirY;
+          break;
+        }
+      case SerialBattery:
+        {
+          float voltage = 0;
+          hs.readBytes((uint8_t *)&voltage, sizeof(float));
+          debug_battery(voltage);
+        }
+    }
   }
 
   // update direction
@@ -215,17 +238,16 @@ void loop() {
     servoAngle(computeServoSpeed() * 360.0f / 2 * PI + SERVO_MIDPOINT);  // convert to degrees now
   }
 
-  
+
   if (currentTurn >= 4) {
     motorSpeed(30);
     followWaypoint();
-  }
-  else if (front_distance < TURNING_POINT  && millis() - last_turn_millis > MIN_TURN_TIME) {
+  } else if (front_distance < TURNING_POINT && millis() - last_turn_millis > MIN_TURN_TIME) {
     if (left_distance > INNER_LENGTH) {
-      target_angle += PI/2.0;
-      waypoints[currentTurn*2] = posX;
-      waypoints[currentTurn*2 + 1] = posY;
-      
+      target_angle += PI / 2.0;
+      waypoints[currentTurn * 2] = posX;
+      waypoints[currentTurn * 2 + 1] = posY;
+
       currentTurn++;
       last_turn_millis = millis();
     }
