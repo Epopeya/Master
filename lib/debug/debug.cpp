@@ -8,7 +8,8 @@ typedef enum {
   TargetDirection,
   CurrentDirection,
   Battery,
-  Servo
+  Position,
+  Route
 } DebugHeader;
 
 HardwareSerial hs_debug(0);
@@ -42,3 +43,16 @@ void debug_battery(float voltage) {
   hs_debug.write(Battery);
   hs_debug.write((uint8_t *)&voltage, sizeof(float));
 }
+
+void debug_position(float x, float y) {
+  hs_debug.write(Position);
+  hs_debug.write((uint8_t *)&x, sizeof(float));
+  hs_debug.write((uint8_t *)&y, sizeof(float));
+}
+
+void debug_waypoints(float waypoints[], size_t waypoints_len) {
+  hs_debug.write(Route);
+  hs_debug.write((uint8_t)waypoints_len);
+  hs_debug.write((uint8_t *)waypoints, sizeof(float)*waypoints_len);
+}
+
