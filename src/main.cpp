@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <MPU9250.h>
-#include "debug.h"
+#include <debug.h>
+#include "vector.h"
 
 #include <RPLidar.h>
 
@@ -42,15 +43,11 @@ float gyro_offset;
 
 // positioning
 float current_angle = 0.0f;
-float posX = 0;
-float posY = -750;
-float dirX = 1.0;
-float dirY = 0.0;
+vector2_t pos = { .x = 0, .y = -750 };
+vector2_t dir = { .x = 1.0, .y = 0.0 };
 
-int waypoints[8] = { 0, 0,
-                     0, 0,
-                     0, 0,
-                     0, 0 };
+#define WAYPOINTS_SIZE 4
+vector2_t waypoints[WAYPOINTS_SIZE] = { { .x = 0, .y = 0 } };
 int waypoint_index = 0;
 float target_angle = 0.0f;
 unsigned long last_turn_millis = 0;
@@ -148,11 +145,13 @@ float computeServoSpeed() {
 // calculate new direction and change waypoints
 void followWaypoint() {
   // vector pointing to target
-  float targetX = waypoints[waypoint_index] - posX;
-  float targetY = waypoints[waypoint_index + 1] - posY;
+  vector2_t target = {
+    .x = waypoints[waypoint_index].x - pos.x,
+    .y = waypoints[waypoint_index].y - pos.y
+  };
 
   // shortest angle to target
-  float angle_diff = atan2(targetY, targetX) - atan2(dirY, dirX);
+  float angle_diff = atan2(target.y, target.x) - atan2(dir.y, dir.x);
   if (angle_diff > PI) {
     angle_diff = angle_diff - 2 * PI;
   } else if (angle_diff < -PI) {
@@ -161,8 +160,8 @@ void followWaypoint() {
 
   target_angle = angle_diff + current_angle;
 
-  if ((targetX * targetX + targetY * targetY) < WAYPOINT_MIN_DISTANCE * WAYPOINT_MIN_DISTANCE) {
-    waypoint_index = (waypoint_index + 2) % 8;
+  if ((target.x * target.x + target.y * target.y) < WAYPOINT_MIN_DISTANCE * WAYPOINT_MIN_DISTANCE) {
+    waypoint_index = (waypoint_index + 1) % WAYPOINTS_SIZE;
   }
 }
 
@@ -217,8 +216,8 @@ void loop() {
           uint8_t encoders = 0;
           hs.readBytes(&encoders, 1);
           encoders *= MILIMETERS_PER_ENCODER;
-          posX += encoders * dirX;
-          posY += encoders * dirY;
+          pos.x += encoders * dir.x;
+          pos.y += encoders * dir.y;
           break;
         }
       case SerialBattery:
@@ -232,8 +231,8 @@ void loop() {
 
   // update direction
   if (updateGyro()) {
-    dirX = cos(current_angle);
-    dirY = sin(current_angle);
+    dir.x = cos(current_angle);
+    dir.y = sin(current_angle);
 
     servoAngle(computeServoSpeed() * 360.0f / 2 * PI + SERVO_MIDPOINT);  // convert to degrees now
   }
@@ -245,8 +244,8 @@ void loop() {
   } else if (front_distance < TURNING_POINT && millis() - last_turn_millis > MIN_TURN_TIME) {
     if (left_distance > INNER_LENGTH) {
       target_angle += PI / 2.0;
-      waypoints[currentTurn * 2] = posX;
-      waypoints[currentTurn * 2 + 1] = posY;
+      waypoints[currentTurn].x = pos.x;
+      waypoints[currentTurn].y = pos.y;
 
       currentTurn++;
       last_turn_millis = millis();
@@ -255,7 +254,7 @@ void loop() {
 
 
 
-  debug_position(posX, posY);
+  debug_position(pos);
   debug_current_direction(current_angle);
   debug_target_direction(target_angle);
 }

@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include "vector.h"
 
 typedef enum {
   Message,
@@ -44,15 +45,17 @@ void debug_battery(float voltage) {
   hs_debug.write((uint8_t *)&voltage, sizeof(float));
 }
 
-void debug_position(float x, float y) {
+void debug_position(vector2_t pos) {
   hs_debug.write(Position);
-  hs_debug.write((uint8_t *)&x, sizeof(float));
-  hs_debug.write((uint8_t *)&y, sizeof(float));
+  hs_debug.write((uint8_t *)&pos.x, sizeof(float));
+  hs_debug.write((uint8_t *)&pos.y, sizeof(float));
 }
 
-void debug_waypoints(float waypoints[], size_t waypoints_len) {
+void debug_waypoints(vector2_t waypoints[], size_t waypoints_len) {
   hs_debug.write(Route);
   hs_debug.write((uint8_t)waypoints_len);
-  hs_debug.write((uint8_t *)waypoints, sizeof(float)*waypoints_len);
+  for (int i = 0; i < waypoints_len; i++) {
+    hs_debug.write((uint8_t *)&waypoints[i].x, sizeof(float));
+    hs_debug.write((uint8_t *)&waypoints[i].y, sizeof(float));
+  }
 }
-
