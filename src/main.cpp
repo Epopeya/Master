@@ -6,10 +6,6 @@
 #include "position.h"
 #include "slave.h"
 
-#define LIDAR_SMOOTHING 0.1f  // lower = more smoothing
-#define LIDAR_INV_SMOOTHING (1 - LIDAR_SMOOTHING)
-#define LIDAR_CHECK_ANGLE 15
-
 #define OUTER_LENGTH 3000
 #define INNER_LENGTH 1500
 #define TURNING_POINT 400
@@ -20,11 +16,6 @@
 vector2_t waypoints[WAYPOINTS_SIZE] = { { .x = 0, .y = 0 } };
 int waypoint_index = 0;
 unsigned long last_turn_millis = 0;
-
-// lidar vars
-float left_distance = 0.0f;
-float right_distance = 0.0f;
-float front_distance = 0.0f;
 
 
 // calculate new direction and change waypoints
@@ -73,32 +64,6 @@ int currentTurn = 0;
 
 void loop() {
   receiveFromSlave();
-  // check lidar
-  if (lidar_measurement_available) {
-    float distance = lidar_measurement.distance;  //distance value in mm unit
-    float angle = lidar_measurement.angle;        //angle value in degrees
-
-    if (!(distance < 10.0 || distance > 3000.0)) {
-      float r_angle = angle + (target_rotation - rotation);
-      // Serial.println(r_angle);
-
-      // front
-      if (r_angle < LIDAR_CHECK_ANGLE || r_angle > 360 - LIDAR_CHECK_ANGLE) {
-        front_distance = LIDAR_SMOOTHING * front_distance + LIDAR_INV_SMOOTHING * distance;
-      }
-
-      // right
-      else if (r_angle < 90 + LIDAR_CHECK_ANGLE && r_angle > 90 - LIDAR_CHECK_ANGLE) {
-        right_distance = LIDAR_SMOOTHING * right_distance + LIDAR_INV_SMOOTHING * distance;
-      }
-
-      // left
-      else if (r_angle < 270 + LIDAR_CHECK_ANGLE && r_angle > 270 - LIDAR_CHECK_ANGLE) {
-        left_distance = LIDAR_SMOOTHING * left_distance + LIDAR_INV_SMOOTHING * distance;
-      }
-    }
-    lidar_measurement_available = false;
-  }
 
   // update direction
   positionUpdate();
@@ -117,8 +82,6 @@ void loop() {
       last_turn_millis = millis();
     }
   }
-
-
 
   debug_position(position);
   debug_current_direction(target_rotation);
