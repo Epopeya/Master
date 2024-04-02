@@ -1,13 +1,11 @@
 #include <Arduino.h>
 #include <MPU9250.h>
 #include <debug.h>
-#include "vector.h"
-
-#include <RPLidar.h>
+#include <vector.h>
+#include "lidar.h"
 
 #define MPU_ADDRESS 0x68
 #define MPU_CALIBRATION_ITERATIONS 1000
-#define RPLIDAR_MOTOR 5
 
 #define MILIMETERS_PER_ENCODER 3.6f
 #define SERVO_MIDPOINT 93
@@ -28,10 +26,7 @@
 
 // You need to create an driver instance
 HardwareSerial hs(1);
-HardwareSerial lidar_serial(2);
-RPLidar lidar;
 MPU9250 mpu;
-TaskHandle_t lidar_task;
 
 // PID variables
 float error, last_error, cum_error, rate_error;
@@ -72,41 +67,6 @@ void motorSpeed(int speed) {
 void servoAngle(int angle) {
   hs.write(SerialServo);
   hs.write((uint8_t *)&angle, sizeof(int));
-}
-
-// use absloute angle for this
-void liderTask(void *pvParameters) {
-  for (;;) {
-    vTaskDelay(1);
-
-
-    if (IS_OK(lidar.waitPoint())) {
-      float distance = lidar.getCurrentPoint().distance;  //distance value in mm unit
-      float angle = lidar.getCurrentPoint().angle;        //anglue value in degree
-
-      if (distance < 10.0 || distance > 3000.0) {
-        continue;
-      }
-
-      float r_angle = angle + (target_angle - current_angle);
-      // Serial.println(r_angle);
-
-      // front
-      if (r_angle < LIDAR_CHECK_ANGLE || r_angle > 360 - LIDAR_CHECK_ANGLE) {
-        front_distance = LIDAR_SMOOTHING * front_distance + LIDAR_INV_SMOOTHING * distance;
-      }
-
-      // right
-      else if (r_angle < 90 + LIDAR_CHECK_ANGLE && r_angle > 90 - LIDAR_CHECK_ANGLE) {
-        right_distance = LIDAR_SMOOTHING * right_distance + LIDAR_INV_SMOOTHING * distance;
-      }
-
-      // left
-      else if (r_angle < 270 + LIDAR_CHECK_ANGLE && r_angle > 270 - LIDAR_CHECK_ANGLE) {
-        left_distance = LIDAR_SMOOTHING * left_distance + LIDAR_INV_SMOOTHING * distance;
-      }
-    }
-  }
 }
 
 void calibrateImu() {
@@ -181,26 +141,7 @@ void setup() {
   debug_init();
   //gyro_last_time = millis();
 
-  // begin the lidar
-  lidar.begin(lidar_serial);
-  rplidar_response_device_info_t info;
-  //while (!IS_OK(lidar.getDeviceInfo(info, 100))) delay(500);
-  rplidar_response_device_health_t health;
-  lidar.getHealth(health);
-  //Serial.println("info: " + String(health.status) +", " + String(health.error_code));
-  // detected...
-  lidar.startScan();
-
-  xTaskCreatePinnedToCore(
-    liderTask,
-    "liderTask",
-    100000,
-    NULL,
-    10,
-    &lidar_task,
-    0);
-
-  analogWrite(RPLIDAR_MOTOR, 255);
+  lidarSetup();
 }
 
 int currentTurn = 0;
@@ -227,6 +168,33 @@ void loop() {
           debug_battery(voltage);
         }
     }
+  }
+
+  // check lidar
+  if (lidar_measurement_available) {
+    float distance = lidar_measurement.distance;  //distance value in mm unit
+    float angle = lidar_measurement.angle;        //angle value in degrees
+
+    if (!(distance < 10.0 || distance > 3000.0)) {
+      float r_angle = angle + (target_angle - current_angle);
+      // Serial.println(r_angle);
+
+      // front
+      if (r_angle < LIDAR_CHECK_ANGLE || r_angle > 360 - LIDAR_CHECK_ANGLE) {
+        front_distance = LIDAR_SMOOTHING * front_distance + LIDAR_INV_SMOOTHING * distance;
+      }
+
+      // right
+      else if (r_angle < 90 + LIDAR_CHECK_ANGLE && r_angle > 90 - LIDAR_CHECK_ANGLE) {
+        right_distance = LIDAR_SMOOTHING * right_distance + LIDAR_INV_SMOOTHING * distance;
+      }
+
+      // left
+      else if (r_angle < 270 + LIDAR_CHECK_ANGLE && r_angle > 270 - LIDAR_CHECK_ANGLE) {
+        left_distance = LIDAR_SMOOTHING * left_distance + LIDAR_INV_SMOOTHING * distance;
+      }
+    }
+    lidar_measurement_available = false;
   }
 
   // update direction
