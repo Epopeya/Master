@@ -3,16 +3,8 @@
 #include <debug.h>
 #include <vector.h>
 #include "lidar.h"
-
-#define MPU_ADDRESS 0x68
-#define MPU_CALIBRATION_ITERATIONS 1000
-
-#define MILIMETERS_PER_ENCODER 3.6f
-#define SERVO_MIDPOINT 93
-
-#define DIR_KP 0.1
-#define DIR_KI 0
-#define DIR_KD 0.02
+#include "position.h"
+#include "slave.h"
 
 #define LIDAR_SMOOTHING 0.1f  // lower = more smoothing
 #define LIDAR_INV_SMOOTHING (1 - LIDAR_SMOOTHING)
@@ -24,27 +16,9 @@
 #define MIN_TURN_TIME 2000
 #define WAYPOINT_MIN_DISTANCE 200
 
-// You need to create an driver instance
-HardwareSerial hs(1);
-MPU9250 mpu;
-
-// PID variables
-float error, last_error, cum_error, rate_error;
-
-// gyro
-unsigned long gyro_last_time = 0;
-long gyro_dt;
-float gyro_offset;
-
-// positioning
-float current_angle = 0.0f;
-vector2_t pos = { .x = 0, .y = -750 };
-vector2_t dir = { .x = 1.0, .y = 0.0 };
-
 #define WAYPOINTS_SIZE 4
 vector2_t waypoints[WAYPOINTS_SIZE] = { { .x = 0, .y = 0 } };
 int waypoint_index = 0;
-float target_angle = 0.0f;
 unsigned long last_turn_millis = 0;
 
 // lidar vars
@@ -52,73 +26,24 @@ float left_distance = 0.0f;
 float right_distance = 0.0f;
 float front_distance = 0.0f;
 
-enum SerialCommands {
-  SerialMotor,
-  SerialServo,
-  SerialEncoder,
-  SerialBattery
-};
-
-void motorSpeed(int speed) {
-  hs.write(SerialMotor);
-  hs.write((uint8_t *)&speed, sizeof(int));
-}
-
-void servoAngle(int angle) {
-  hs.write(SerialServo);
-  hs.write((uint8_t *)&angle, sizeof(int));
-}
-
-void calibrateImu() {
-  float totalAngle = 0;
-  for (int i = 0; i < MPU_CALIBRATION_ITERATIONS; i++) {
-    while (!mpu.update()) {}
-    totalAngle += mpu.getGyroZ();
-  }
-  gyro_offset = totalAngle / MPU_CALIBRATION_ITERATIONS;
-}
-
-bool updateGyro() {
-  if (mpu.update()) {
-    long current_millis = millis();
-    gyro_dt = current_millis - gyro_last_time;
-    gyro_last_time = current_millis;
-    float gyro_value = (mpu.getGyroZ() - gyro_offset) * 2 * PI / 360;
-    current_angle += gyro_value * gyro_dt / 1000;
-    return true;
-  }
-  return false;
-}
-
-float computeServoSpeed() {
-  error = target_angle - current_angle;
-  cum_error += error * gyro_dt;
-  rate_error = (error - last_error) / gyro_dt;
-
-  float output = DIR_KP * error + DIR_KI * cum_error + DIR_KD * rate_error;
-
-  last_error = error;
-
-  return output;
-}
 
 // calculate new direction and change waypoints
 void followWaypoint() {
   // vector pointing to target
   vector2_t target = {
-    .x = waypoints[waypoint_index].x - pos.x,
-    .y = waypoints[waypoint_index].y - pos.y
+    .x = waypoints[waypoint_index].x - position.x,
+    .y = waypoints[waypoint_index].y - position.y
   };
 
   // shortest angle to target
-  float angle_diff = atan2(target.y, target.x) - atan2(dir.y, dir.x);
+  float angle_diff = atan2(target.y, target.x) - atan2(orientation.y, orientation.x);
   if (angle_diff > PI) {
     angle_diff = angle_diff - 2 * PI;
   } else if (angle_diff < -PI) {
     angle_diff = angle_diff + 2 * PI;
   }
 
-  target_angle = angle_diff + current_angle;
+  target_rotation = angle_diff + rotation;
 
   if ((target.x * target.x + target.y * target.y) < WAYPOINT_MIN_DISTANCE * WAYPOINT_MIN_DISTANCE) {
     waypoint_index = (waypoint_index + 1) % WAYPOINTS_SIZE;
@@ -127,11 +52,11 @@ void followWaypoint() {
 
 void setup() {
   // Motor
-  hs.begin(1000000, SERIAL_8N1, 4, 2);
+  slaveSetup();
 
   Wire.begin();
-  mpu.setup(MPU_ADDRESS);
-  calibrateImu();
+  positionSetup();
+  positionCalibrate();
 
   motorSpeed(10);
   servoAngle(SERVO_MIDPOINT);
@@ -147,36 +72,14 @@ void setup() {
 int currentTurn = 0;
 
 void loop() {
-  // Receive messages on HardwareSerial 1
-  if (hs.available() > 0) {
-    int header = hs.read();
-    switch (header) {
-      // Update position
-      case SerialEncoder:
-        {
-          uint8_t encoders = 0;
-          hs.readBytes(&encoders, 1);
-          encoders *= MILIMETERS_PER_ENCODER;
-          pos.x += encoders * dir.x;
-          pos.y += encoders * dir.y;
-          break;
-        }
-      case SerialBattery:
-        {
-          float voltage = 0;
-          hs.readBytes((uint8_t *)&voltage, sizeof(float));
-          debug_battery(voltage);
-        }
-    }
-  }
-
+  receiveFromSlave();
   // check lidar
   if (lidar_measurement_available) {
     float distance = lidar_measurement.distance;  //distance value in mm unit
     float angle = lidar_measurement.angle;        //angle value in degrees
 
     if (!(distance < 10.0 || distance > 3000.0)) {
-      float r_angle = angle + (target_angle - current_angle);
+      float r_angle = angle + (target_rotation - rotation);
       // Serial.println(r_angle);
 
       // front
@@ -198,12 +101,7 @@ void loop() {
   }
 
   // update direction
-  if (updateGyro()) {
-    dir.x = cos(current_angle);
-    dir.y = sin(current_angle);
-
-    servoAngle(computeServoSpeed() * 360.0f / 2 * PI + SERVO_MIDPOINT);  // convert to degrees now
-  }
+  positionUpdate();
 
 
   if (currentTurn >= 4) {
@@ -211,9 +109,9 @@ void loop() {
     followWaypoint();
   } else if (front_distance < TURNING_POINT && millis() - last_turn_millis > MIN_TURN_TIME) {
     if (left_distance > INNER_LENGTH) {
-      target_angle += PI / 2.0;
-      waypoints[currentTurn].x = pos.x;
-      waypoints[currentTurn].y = pos.y;
+      target_rotation += PI / 2.0;
+      waypoints[currentTurn].x = position.x;
+      waypoints[currentTurn].y = position.y;
 
       currentTurn++;
       last_turn_millis = millis();
@@ -222,7 +120,7 @@ void loop() {
 
 
 
-  debug_position(pos);
-  debug_current_direction(current_angle);
-  debug_target_direction(target_angle);
+  debug_position(position);
+  debug_current_direction(target_rotation);
+  debug_target_direction(target_rotation);
 }
