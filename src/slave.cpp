@@ -42,6 +42,7 @@ void receiveFromSlave() {
           float voltage = 0;
           hs.readBytes((uint8_t *)&voltage, sizeof(float));
           debug_battery(voltage);
+          break;
         }
     }
   }
