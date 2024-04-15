@@ -8,3 +8,4 @@ void debug_current_direction(float angle);
 void debug_battery(float voltage);
 void debug_position(vector2_t pos);
 void debug_waypoints(vector2_t waypoints[], size_t waypoints_len);
+void debug_lidar(vector2_t pos);

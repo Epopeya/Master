@@ -10,7 +10,8 @@ typedef enum {
   CurrentDirection,
   Battery,
   Position,
-  Route
+  Route,
+  Lidar
 } DebugHeader;
 
 HardwareSerial hs_debug(0);
@@ -58,4 +59,10 @@ void debug_waypoints(vector2_t waypoints[], size_t waypoints_len) {
     hs_debug.write((uint8_t *)&waypoints[i].x, sizeof(float));
     hs_debug.write((uint8_t *)&waypoints[i].y, sizeof(float));
   }
+}
+
+void debug_lidar(vector2_t pos) {
+  hs_debug.write(Lidar);
+  hs_debug.write((uint8_t *)&pos.x, sizeof(float));
+  hs_debug.write((uint8_t *)&pos.y, sizeof(float));
 }
