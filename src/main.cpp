@@ -7,8 +7,8 @@
 #include "slave.h"
 
 #define OUTER_LENGTH 3000
-#define INNER_LENGTH 1500
-#define TURNING_POINT 800
+#define INNER_LENGTH 1700
+#define TURNING_POINT 1200
 #define MIN_TURN_TIME 4000
 #define WAYPOINT_MIN_DISTANCE 50
 
@@ -21,6 +21,7 @@ unsigned long last_turn_millis = 0;
 unsigned long last_battery_report = 0;
 float battery_voltage = 0.0f;
 
+int total_encoders = 0;
 
 // calculate new direction and change waypoints
 void followWaypoint() {
@@ -46,6 +47,7 @@ void followWaypoint() {
 }
 
 void setup() {
+  delay(3000);
   // Motor
   slaveSetup();
 
@@ -53,7 +55,7 @@ void setup() {
   positionSetup();
   positionCalibrate();
 
-  motorSpeed(10);
+  
   servoAngle(SERVO_MIDPOINT);
 
   //Debugging
@@ -71,10 +73,11 @@ void loop() {
 
   // update direction
   positionUpdate();
-
-
+  
   if (currentTurn >= 4) {
-    motorSpeed(30);
+    if (battery_voltage > 3) {
+        motorSpeed(30);
+    }
     followWaypoint();
   } else if (front_distance < TURNING_POINT && millis() - last_turn_millis > MIN_TURN_TIME) {
     if (left_distance > INNER_LENGTH) {
@@ -82,14 +85,30 @@ void loop() {
       waypoints[currentTurn].x = position.x;
       waypoints[currentTurn].y = position.y;
 
+      debug_waypoints(waypoints, currentTurn + 1);
+      currentTurn++;
+      last_turn_millis = millis();
+    }
+    else if (right_distance > INNER_LENGTH) {
+      target_rotation -= PI / 2.0;
+      waypoints[currentTurn].x = position.x;
+      waypoints[currentTurn].y = position.y;
+
+      debug_waypoints(waypoints, currentTurn + 1);
       currentTurn++;
       last_turn_millis = millis();
     }
   }
+  
 
   if (millis() - last_battery_report > BATTERY_REPORT_RATE) {
     debug_battery(battery_voltage);
     last_battery_report = millis();
+    if (battery_voltage > 3) {
+      motorSpeed(10);
+    } else {
+      motorSpeed(0);
+    }
   };
 
   debug_position(position);

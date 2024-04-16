@@ -4,6 +4,7 @@
 HardwareSerial hs(1);
 
 extern float battery_voltage;
+extern int total_encoders;
 
 #define VOLTAGE_SAMPLE_N 10
 float voltage_samples[VOLTAGE_SAMPLE_N];
@@ -40,6 +41,7 @@ void receiveFromSlave() {
         {
           uint8_t encoders = 0;
           hs.readBytes(&encoders, 1);
+          total_encoders += encoders;
           encoders *= MILIMETERS_PER_ENCODER;
           position.x += encoders * orientation.x;
           position.y += encoders * orientation.y;

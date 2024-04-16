@@ -15,9 +15,7 @@ void lidarTask(void *pvParameters) {
       float angle = lidar.getCurrentPoint().angle;        //angle value in degrees
 
       if (!(distance < 10.0 || distance > 3000.0)) {
-        float r_angle = angle + (target_rotation - rotation) * (360.0f / 2 * PI);
-        debug_msg("angle: %f", angle);
-        debug_msg("r_angle: %f", r_angle);
+        float r_angle = angle + (target_rotation - rotation) * (360.0f / (2 * PI));
         // Serial.println(r_angle);
 
         // front
@@ -26,12 +24,12 @@ void lidarTask(void *pvParameters) {
         }
 
         // right
-        else if (r_angle < 90 + LIDAR_CHECK_ANGLE && r_angle > 90 - LIDAR_CHECK_ANGLE) {
+        else if (r_angle < 90 + LIDAR_CHECK_ANGLE && r_angle > 90) {
           right_distance = LIDAR_SMOOTHING * right_distance + LIDAR_INV_SMOOTHING * distance;
         }
 
         // left
-        else if (r_angle < 270 + LIDAR_CHECK_ANGLE && r_angle > 270 - LIDAR_CHECK_ANGLE) {
+        else if (r_angle < 270 && r_angle > 270 - LIDAR_CHECK_ANGLE) {
           left_distance = LIDAR_SMOOTHING * left_distance + LIDAR_INV_SMOOTHING * distance;
         }
       }
@@ -42,6 +40,41 @@ void lidarTask(void *pvParameters) {
 void lidarSetup() {
   lidar.begin(lidar_serial);
   lidar.startScan();
-  xTaskCreatePinnedToCore(lidarTask, "lidar", 100000, NULL, 10, &lidar_task, 0);
   analogWrite(RPLIDAR_MOTOR, 255);
+
+  
+  vector2_t counter = {.x = 0, .y=0};
+  vector2_t start_distances =  {.x = 0, .y=0};
+  while (counter.x < 250 && counter.y < 250) {
+     if (IS_OK(lidar.waitPoint())) {
+        float distance = lidar.getCurrentPoint().distance;  //distance value in mm unit
+        float angle = lidar.getCurrentPoint().angle;        //angle value in degrees
+
+        if (!(distance < 10.0 || distance > 3000.0)) {
+          if (angle < 5 || angle > 355) {
+            counter.x++;
+            start_distances.x += distance;
+            debug_msg("x_dist: %f", start_distances.x);
+          }
+          if (angle < 275 && angle > 265) {
+            counter.y++;
+            start_distances.y += distance;
+            debug_msg("y_dist: %f", start_distances.y);
+
+          }
+        }
+     }
+  }
+  start_distances.x /= counter.x;
+  start_distances.y /= counter.y;
+
+  position.x = 1500 - start_distances.x;
+  position.y = -500 - start_distances.y;
+
+  debug_msg("pos.x: %f, pos.y: %f", 
+  position.x, position.y);
+  
+
+  xTaskCreatePinnedToCore(lidarTask, "lidar", 100000, NULL, 10, &lidar_task, 0);
+
 }
