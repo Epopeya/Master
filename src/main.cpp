@@ -93,6 +93,6 @@ void loop() {
   };
 
   debug_position(position);
-  debug_current_direction(target_rotation);
+  debug_current_direction(rotation);
   debug_target_direction(target_rotation);
 }
