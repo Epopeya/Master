@@ -15,7 +15,9 @@ void lidarTask(void *pvParameters) {
       float angle = lidar.getCurrentPoint().angle;        //angle value in degrees
 
       if (!(distance < 10.0 || distance > 3000.0)) {
-        float r_angle = angle + (target_rotation - rotation);
+        float r_angle = angle + (target_rotation - rotation) * (360.0f / 2 * PI);
+        debug_msg("angle: %f", angle);
+        debug_msg("r_angle: %f", r_angle);
         // Serial.println(r_angle);
 
         // front
