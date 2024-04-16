@@ -8,9 +8,9 @@
 
 #define OUTER_LENGTH 3000
 #define INNER_LENGTH 1500
-#define TURNING_POINT 400
-#define MIN_TURN_TIME 2000
-#define WAYPOINT_MIN_DISTANCE 200
+#define TURNING_POINT 800
+#define MIN_TURN_TIME 4000
+#define WAYPOINT_MIN_DISTANCE 50
 
 #define WAYPOINTS_SIZE 4
 vector2_t waypoints[WAYPOINTS_SIZE] = { { .x = 0, .y = 0 } };
