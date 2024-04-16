@@ -1,7 +1,8 @@
 #pragma once
 #include <Arduino.h>
 #include <debug.h>
-#include "position.h"
+
+extern float battery;
 
 void slaveSetup();
 void servoAngle(int angle);

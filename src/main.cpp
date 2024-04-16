@@ -17,6 +17,10 @@ vector2_t waypoints[WAYPOINTS_SIZE] = { { .x = 0, .y = 0 } };
 int waypoint_index = 0;
 unsigned long last_turn_millis = 0;
 
+#define BATTERY_REPORT_RATE 500
+unsigned long last_battery_report = 0;
+float battery_voltage = 0.0f;
+
 
 // calculate new direction and change waypoints
 void followWaypoint() {
@@ -82,6 +86,11 @@ void loop() {
       last_turn_millis = millis();
     }
   }
+
+  if (millis() - last_battery_report > BATTERY_REPORT_RATE) {
+    debug_battery(battery_voltage);
+    last_battery_report = millis();
+  };
 
   debug_position(position);
   debug_current_direction(target_rotation);

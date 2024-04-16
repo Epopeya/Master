@@ -1,6 +1,14 @@
 #include "slave.h"
+#include "position.h"
 
 HardwareSerial hs(1);
+
+extern float battery_voltage;
+
+#define VOLTAGE_SAMPLE_N 10
+float voltage_samples[VOLTAGE_SAMPLE_N];
+int voltage_sample_index = 0;
+float total_voltage = 0.0f;
 
 void slaveSetup() {
   hs.begin(1000000, SERIAL_8N1, 4, 2);
@@ -39,9 +47,13 @@ void receiveFromSlave() {
         }
       case SerialBattery:
         {
-          float voltage = 0;
+          float voltage = 0.0f;
           hs.readBytes((uint8_t *)&voltage, sizeof(float));
-          debug_battery(voltage);
+          total_voltage -= voltage_samples[voltage_sample_index];
+          total_voltage += voltage;
+          voltage_samples[voltage_sample_index] = voltage;
+          voltage_sample_index = (voltage_sample_index + 1) % VOLTAGE_SAMPLE_N;
+          battery_voltage = total_voltage / VOLTAGE_SAMPLE_N;
           break;
         }
     }
