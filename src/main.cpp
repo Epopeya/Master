@@ -36,7 +36,7 @@ void followWaypoint() {
 
   target_rotation = angle_diff + rotation;
 
-  if ((target.x * target.x + target.y * target.y) < WAYPOINT_MIN_DISTANCE * WAYPOINT_MIN_DISTANCE) {
+  if (sqrt(target.x * target.x + target.y * target.y) < WAYPOINT_MIN_DISTANCE) {
     waypoint_index = (waypoint_index + 1) % WAYPOINTS_SIZE;
   }
 }
