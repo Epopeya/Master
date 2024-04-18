@@ -6,10 +6,12 @@ HardwareSerial hs(1);
 extern float battery_voltage;
 extern int total_encoders;
 
-#define VOLTAGE_SAMPLE_N 10
-float voltage_samples[VOLTAGE_SAMPLE_N];
+#define VOLTAGE_SAMPLE_N 32
+int voltage_samples[VOLTAGE_SAMPLE_N];
 int voltage_sample_index = 0;
 float total_voltage = 0.0f;
+bool battery_ready = false;
+#define BATTERY_CONVERSION 390
 
 void slaveSetup() {
   hs.begin(1000000, SERIAL_8N1, 4, 2);
@@ -33,7 +35,7 @@ void servoAngle(int angle) {
 }
 
 void receiveFromSlave() {
-  if (hs.available() > 0) {
+  while (hs.available() > 0) {
     int header = hs.read();
     switch (header) {
       // Update position
@@ -41,6 +43,7 @@ void receiveFromSlave() {
         {
           uint8_t encoders = 0;
           hs.readBytes(&encoders, 1);
+          debug_msg("encoder_diff: %d", encoders);
           total_encoders += encoders;
           encoders *= MILIMETERS_PER_ENCODER;
           position.x += encoders * orientation.x;
@@ -49,15 +52,22 @@ void receiveFromSlave() {
         }
       case SerialBattery:
         {
-          float voltage = 0.0f;
-          hs.readBytes((uint8_t *)&voltage, sizeof(float));
+          uint16_t voltage = 0.0f;
+          hs.readBytes((uint8_t *)&voltage, sizeof(uint16_t));
           total_voltage -= voltage_samples[voltage_sample_index];
           total_voltage += voltage;
           voltage_samples[voltage_sample_index] = voltage;
+          if (voltage_sample_index == VOLTAGE_SAMPLE_N - 1) battery_ready = true;
           voltage_sample_index = (voltage_sample_index + 1) % VOLTAGE_SAMPLE_N;
-          battery_voltage = total_voltage / VOLTAGE_SAMPLE_N;
+          battery_voltage = total_voltage / VOLTAGE_SAMPLE_N / BATTERY_CONVERSION;
           break;
         }
     }
+  }
+}
+
+void waitForBattery() {
+  while (!battery_ready) {
+    receiveFromSlave();
   }
 }

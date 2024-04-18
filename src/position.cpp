@@ -24,11 +24,11 @@ void positionSetup() {
 
 bool updateGyro() {
   if (mpu.update()) {
-    long current_millis = millis();
+    long current_millis = micros();
     gyro_dt = current_millis - gyro_last_time;
     gyro_last_time = current_millis;
     float gyro_value = (mpu.getGyroZ() - gyro_offset) * 2 * PI / 360;
-    rotation += gyro_value * gyro_dt / 1000;
+    rotation += gyro_value * gyro_dt / 1000000;
     return true;
   }
   return false;

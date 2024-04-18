@@ -55,41 +55,52 @@ void setup() {
   positionSetup();
   positionCalibrate();
 
-  
+
   servoAngle(SERVO_MIDPOINT);
 
   //Debugging
   Serial.begin(9600);
   debug_init();
   //gyro_last_time = millis();
-
-  lidarSetup();
+  waitForBattery();
+  if (battery_voltage > 6) {
+    lidarSetup();
+    motorSpeed(10);
+  }
 }
 
 int currentTurn = 0;
 
 void loop() {
-  receiveFromSlave();
-
   // update direction
   positionUpdate();
-  
+
+  receiveFromSlave();
+
+  if (millis() - last_battery_report > BATTERY_REPORT_RATE) {
+    debug_battery(battery_voltage);
+    last_battery_report = millis();
+  };
+
+  debug_position(position);
+  debug_current_direction(rotation);
+  debug_target_direction(target_rotation);
+
   if (currentTurn >= 4) {
     if (battery_voltage > 3) {
-        motorSpeed(30);
+      motorSpeed(50);
     }
     followWaypoint();
   } else if (front_distance < TURNING_POINT && millis() - last_turn_millis > MIN_TURN_TIME) {
     if (left_distance > INNER_LENGTH) {
       target_rotation += PI / 2.0;
-      waypoints[currentTurn].x = position.x;
-      waypoints[currentTurn].y = position.y;
+      waypoints[currentTurn].x = position.x + orientation.x * 250;
+      waypoints[currentTurn].y = position.y + orientation.y * 250;
 
       debug_waypoints(waypoints, currentTurn + 1);
       currentTurn++;
       last_turn_millis = millis();
-    }
-    else if (right_distance > INNER_LENGTH) {
+    } else if (right_distance > INNER_LENGTH) {
       target_rotation -= PI / 2.0;
       waypoints[currentTurn].x = position.x;
       waypoints[currentTurn].y = position.y;
@@ -99,19 +110,4 @@ void loop() {
       last_turn_millis = millis();
     }
   }
-  
-
-  if (millis() - last_battery_report > BATTERY_REPORT_RATE) {
-    debug_battery(battery_voltage);
-    last_battery_report = millis();
-    if (battery_voltage > 3) {
-      motorSpeed(10);
-    } else {
-      motorSpeed(0);
-    }
-  };
-
-  debug_position(position);
-  debug_current_direction(rotation);
-  debug_target_direction(target_rotation);
 }
