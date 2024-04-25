@@ -11,7 +11,8 @@ typedef enum {
   Battery,
   Position,
   Route,
-  Lidar
+  Lidar,
+  MapFlip
 } DebugHeader;
 
 HardwareSerial hs_debug(0);
@@ -65,4 +66,9 @@ void debug_lidar(vector2_t pos) {
   hs_debug.write(Lidar);
   hs_debug.write((uint8_t *)&pos.x, sizeof(float));
   hs_debug.write((uint8_t *)&pos.y, sizeof(float));
+}
+
+void debug_map_flip(bool flipped) {
+  hs_debug.write(MapFlip);
+  hs_debug.write((uint8_t *)&flipped, sizeof(bool));
 }

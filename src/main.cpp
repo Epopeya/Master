@@ -93,6 +93,9 @@ void loop() {
     followWaypoint();
   } else if (front_distance < TURNING_POINT && millis() - last_turn_millis > MIN_TURN_TIME) {
     if (left_distance > INNER_LENGTH) {
+      if (currentTurn == 0) {
+        debug_map_flip(false);
+      }
       target_rotation += PI / 2.0;
       waypoints[currentTurn].x = position.x + orientation.x * 250;
       waypoints[currentTurn].y = position.y + orientation.y * 250;
@@ -101,6 +104,9 @@ void loop() {
       currentTurn++;
       last_turn_millis = millis();
     } else if (right_distance > INNER_LENGTH) {
+      if (currentTurn == 0) {
+        debug_map_flip(true);
+      }
       target_rotation -= PI / 2.0;
       waypoints[currentTurn].x = position.x;
       waypoints[currentTurn].y = position.y;
