@@ -43,7 +43,6 @@ void receiveFromSlave() {
         {
           uint8_t encoders = 0;
           hs.readBytes(&encoders, 1);
-          debug_msg("encoder_diff: %d", encoders);
           total_encoders += encoders;
           encoders *= MILIMETERS_PER_ENCODER;
           position.x += encoders * orientation.x;
