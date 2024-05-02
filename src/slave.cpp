@@ -13,6 +13,9 @@ float total_voltage = 0.0f;
 bool battery_ready = false;
 #define BATTERY_CONVERSION 390
 
+extern block_t red_block;
+extern block_t green_block;
+
 void slaveSetup() {
   hs.begin(1000000, SERIAL_8N1, 4, 2);
 }
@@ -21,7 +24,8 @@ enum SerialCommands {
   SerialMotor,
   SerialServo,
   SerialEncoder,
-  SerialBattery
+  SerialBattery,
+  SerialBlocks
 };
 
 void motorSpeed(int speed) {
@@ -59,6 +63,35 @@ void receiveFromSlave() {
           if (voltage_sample_index == VOLTAGE_SAMPLE_N - 1) battery_ready = true;
           voltage_sample_index = (voltage_sample_index + 1) % VOLTAGE_SAMPLE_N;
           battery_voltage = total_voltage / VOLTAGE_SAMPLE_N / BATTERY_CONVERSION;
+          break;
+        }
+      case SerialBlocks:
+        {
+          int color = hs.read();
+          int x = 0;
+          int y = 0;
+          hs.readBytes((uint8_t *)&x, sizeof(int));
+          hs.readBytes((uint8_t *)&y, sizeof(int));
+          switch (color) {
+            case 0:  // Green
+              {
+                if (x == -1 && y == -1) green_block.in_scene = false;
+                else green_block.in_scene = true;
+                green_block.x = x;
+                green_block.y = y;
+                debug_msg("green block: x->%d y->%d", x, y);
+                break;
+              }
+            case 1:  // Red
+              {
+                if (x == -1 && y == -1) red_block.in_scene = false;
+                else red_block.in_scene = true;
+                red_block.x = x;
+                red_block.y = y;
+                debug_msg("red block: x->%d y->%d", x, y);
+                break;
+              }
+          }
           break;
         }
     }

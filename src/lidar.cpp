@@ -1,6 +1,6 @@
 #include "lidar.h"
 
-#define LIDAR_INITIAL_POS_ROUNDS 100
+#define LIDAR_INITIAL_POS_ROUNDS 50
 
 HardwareSerial lidar_serial(2);
 RPLidar lidar;
@@ -19,6 +19,10 @@ void lidarTask(void *pvParameters) {
       if (!(distance < 10.0 || distance > 3000.0)) {
         float r_angle = angle + (target_rotation - rotation) * (360.0f / (2 * PI));
 
+        // TODO: Doesn't account for a rotated robot
+        float abs_angle = rotation - angle * 2 * PI / 360;
+        debug_lidar({ .x = position.x + distance * cosf(abs_angle),
+                      .y = position.y + distance * sinf(abs_angle) });
         // front
         if (r_angle < LIDAR_CHECK_ANGLE || r_angle > 360 - LIDAR_CHECK_ANGLE) {
           front_distance = LIDAR_SMOOTHING * front_distance + LIDAR_INV_SMOOTHING * distance;
@@ -45,17 +49,19 @@ void lidarSetup() {
 
   vector2_t counter = { .x = 0, .y = 0 };
   vector2_t start_distances = { .x = 0, .y = 0 };
-  while (counter.x < LIDAR_INITIAL_POS_ROUNDS && counter.y < LIDAR_INITIAL_POS_ROUNDS) {
+  while (counter.x < LIDAR_INITIAL_POS_ROUNDS || counter.y < LIDAR_INITIAL_POS_ROUNDS) {
     if (IS_OK(lidar.waitPoint())) {
       float distance = lidar.getCurrentPoint().distance;  //distance value in mm unit
       float angle = lidar.getCurrentPoint().angle;        //angle value in degrees
 
       if (!(distance < 10.0 || distance > 3000.0)) {
         if (angle < 5 || angle > 355) {
+          debug_msg("posX: %f", distance);
           counter.x++;
           start_distances.x += distance;
         }
         if (angle < 275 && angle > 265) {
+          debug_msg("posY: %f", distance);
           counter.y++;
           start_distances.y += distance;
         }

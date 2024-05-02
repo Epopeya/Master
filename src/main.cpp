@@ -2,6 +2,7 @@
 #include <MPU9250.h>
 #include <debug.h>
 #include <vector.h>
+#include "esp32-hal.h"
 #include "lidar.h"
 #include "position.h"
 #include "slave.h"
@@ -22,6 +23,9 @@ unsigned long last_battery_report = 0;
 float battery_voltage = 0.0f;
 
 int total_encoders = 0;
+
+block_t red_block = { 0 };
+block_t green_block = { 0 };
 
 // calculate new direction and change waypoints
 void followWaypoint() {
@@ -64,8 +68,8 @@ void setup() {
   //gyro_last_time = millis();
   waitForBattery();
   if (battery_voltage > 6) {
-    lidarSetup();
-    motorSpeed(10);
+    //lidarSetup();
+    motorSpeed(0);
   }
 }
 
@@ -88,7 +92,7 @@ void loop() {
 
   if (currentTurn >= 4) {
     if (battery_voltage > 3) {
-      motorSpeed(50);
+      motorSpeed(30);
     }
     followWaypoint();
   } else if (front_distance < TURNING_POINT && millis() - last_turn_millis > MIN_TURN_TIME) {
