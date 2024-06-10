@@ -3,11 +3,14 @@
 MPU9250 mpu;
 float rotation = 0;
 float target_rotation = 0;
+float absolute_target_rot = 0; // rotation from lidar
+float relative_target_rot = 0; // rotation from lidar
+
 unsigned long gyro_last_time = 0;
 unsigned long gyro_dt = 0;
 float gyro_offset = 0;
 vector2_t orientation = { .x = 1.0, .y = 0 };
-vector2_t position = { .x = 0, .y = -750 };
+
 
 void positionCalibrate() {
   float totalAngle = 0;

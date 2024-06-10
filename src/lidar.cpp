@@ -1,6 +1,6 @@
 #include "lidar.h"
 
-#define LIDAR_INITIAL_POS_ROUNDS 50
+#define LIDAR_INITIAL_POS_ROUNDS 20
 
 HardwareSerial lidar_serial(2);
 RPLidar lidar;
@@ -17,12 +17,12 @@ void lidarTask(void *pvParameters) {
       float angle = lidar.getCurrentPoint().angle;        //angle value in degrees
 
       if (!(distance < 10.0 || distance > 3000.0)) {
-        float r_angle = angle + (target_rotation - rotation) * (360.0f / (2 * PI));
+        float r_angle = angle + (absolute_target_rot - rotation) * (360.0f / (2 * PI));
 
         // TODO: Doesn't account for a rotated robot
         float abs_angle = rotation - angle * 2 * PI / 360;
-        debug_lidar({ .x = position.x + distance * cosf(abs_angle),
-                      .y = position.y + distance * sinf(abs_angle) });
+        // debug_lidar({ .x = position.x + distance * cosf(abs_angle),
+        //               .y = position.y + distance * sinf(abs_angle) });
         // front
         if (r_angle < LIDAR_CHECK_ANGLE || r_angle > 360 - LIDAR_CHECK_ANGLE) {
           front_distance = LIDAR_SMOOTHING * front_distance + LIDAR_INV_SMOOTHING * distance;
@@ -73,6 +73,10 @@ void lidarSetup() {
 
   position.x = 1500 - start_distances.x;
   position.y = -500 - start_distances.y;
+
+  left_distance = start_distances.y;
+  right_distance = 1000 - start_distances.y;
+  front_distance = start_distances.x;
 
   debug_msg("pos.x: %f, pos.y: %f",
             position.x, position.y);

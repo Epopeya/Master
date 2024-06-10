@@ -16,6 +16,9 @@
 
 extern float rotation;
 extern float target_rotation;
+extern float relative_target_rot;
+extern float absolute_target_rot;
+
 extern vector2_t position;
 extern vector2_t orientation;
 

@@ -75,7 +75,8 @@ void receiveFromSlave() {
           switch (color) {
             case 0:  // Green
               {
-                if (x == -1 && y == -1) green_block.in_scene = false;
+                green_block.in_scene = false;
+                if (x < 1 || y < 1) return;
                 else green_block.in_scene = true;
                 green_block.x = x;
                 green_block.y = y;
@@ -84,7 +85,8 @@ void receiveFromSlave() {
               }
             case 1:  // Red
               {
-                if (x == -1 && y == -1) red_block.in_scene = false;
+                red_block.in_scene = false;
+                if (x < 1 || y < 1) return;
                 else red_block.in_scene = true;
                 red_block.x = x;
                 red_block.y = y;
