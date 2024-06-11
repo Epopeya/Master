@@ -1,10 +1,9 @@
 #include "pid.h"
 
 
-float PID::update() {
+float PID::update(float error) {
     unsigned long current_time = micros();
-    float error = target - last_value;
-    unsigned long dt = current_time - last_update;
+    float dt = (current_time - last_update) * 1E-6;
 
     cumulative_error += error * dt;
     float error_rate = (error - last_error) / dt;
