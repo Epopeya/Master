@@ -3,6 +3,7 @@
 
 HardwareSerial hs(1);
 int encoders = 0;
+float battery = 0;
 
 // WARN: This will block until slave communicates!
 void slaveSetup() {
@@ -22,10 +23,10 @@ enum SerialCommands {
 void motorSpeed(int speed) {
   hs.write(SerialMotor);
   uint8_t buf[] = {
-    speed,
-    speed >> 8,
-    speed >> 16,
-    speed >> 24
+    speed & 0xff,
+    (speed >> 8) & 0xff,
+    (speed >> 16) & 0xff,
+    (speed >> 24) & 0xff
   };
   hs.write(buf, sizeof(buf));
 }
@@ -43,19 +44,26 @@ int getEncoders() {
   return enc;
 }
 
+#define BATTERY_CONVERSION 390.0f
+
 void slaveProcessSerial() {
   while (hs.available() > 0) {
     int header = hs.read();
     switch (header) {
       // Update position
       case SerialEncoder:
-        {
-          uint8_t enc = 0;
-          hs.readBytes(&enc, 1);
-          encoders += enc;
-          break;
-        }
-      default: {}
+      {
+        uint8_t enc = hs.read();
+        encoders += enc;
+        break;
+      }
+      case SerialBattery:
+      {
+        uint8_t buf[2] = { 0 };
+        hs.readBytes(buf, sizeof(buf));
+        battery = (buf[0] | buf[1] << 8) / BATTERY_CONVERSION; 
+        break;
+      }
     }
   }
 }
