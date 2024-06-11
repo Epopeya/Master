@@ -17,8 +17,10 @@ typedef enum {
 
 HardwareSerial hs_debug(0);
 
+// WARN: Will block until connection through Websocket is made
 void debug_init() {
   hs_debug.begin(112500, SERIAL_8N1, 23, 19);
+  //while (hs_debug.available() < 1) {}
 }
 
 void debug_msg(const char *format, ...) {

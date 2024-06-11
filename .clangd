@@ -1,3 +1,0 @@
-CompileFlags:
-    Add: [ -D__XTENSA__, --target=mipsel ]
-    Remove: [-fno-tree-switch-conversion, -fstrict-volatile-bitfields, -mlongcalls]

@@ -1,4 +1,5 @@
 #pragma once
+#include <stddef.h>
 #include <vector.h>
 
 void debug_init();
