@@ -1,9 +1,11 @@
 #pragma once
+#include <Arduino.h>
 
 class Timer {
     public:
-    Timer(int time): time(time) {};
+    Timer(int time): time(time), last_time(millis()) {};
     int time;
-    unsigned long last_time;
     bool primed();
+    private:
+    unsigned long last_time;
 };

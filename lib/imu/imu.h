@@ -2,7 +2,9 @@
 
 class Imu {
     public:
-        int setup();
+        void setup();
         float rotation;
         bool update();
+    private:
+        float offset;
 };

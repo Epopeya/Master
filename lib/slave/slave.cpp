@@ -7,7 +7,7 @@ float battery = 0;
 
 // WARN: This will block until slave communicates!
 void slaveSetup() {
-  hs.begin(1000000, SERIAL_8N1, 4, 2);
+  hs.begin(921600, SERIAL_8N1, 4, 2);
   // Block until a packet is available
   while(hs.available() < 1) {}
 }
@@ -21,8 +21,9 @@ enum SerialCommands {
 };
 
 void motorSpeed(int speed) {
-  hs.write(SerialMotor);
   uint8_t buf[] = {
+    0x16,
+    SerialMotor,
     speed & 0xff,
     (speed >> 8) & 0xff,
     (speed >> 16) & 0xff,
@@ -32,9 +33,8 @@ void motorSpeed(int speed) {
 }
 
 void servoAngle(float angle) {
-  hs.write(SerialServo);
-  uint8_t buf[4] = { 0 };
-  memcpy(buf, &angle, sizeof(float));
+  uint8_t buf[] = { 0x16, SerialServo, 0, 0, 0, 0 };
+  memcpy(buf + 2, &angle, sizeof(float));
   hs.write(buf, sizeof(buf));
 }
 
@@ -48,22 +48,25 @@ int getEncoders() {
 
 void slaveProcessSerial() {
   while (hs.available() > 0) {
-    int header = hs.read();
-    switch (header) {
-      // Update position
-      case SerialEncoder:
-      {
-        uint8_t enc = hs.read();
-        encoders += enc;
-        break;
-      }
-      case SerialBattery:
-      {
-        uint8_t buf[2] = { 0 };
-        hs.readBytes(buf, sizeof(buf));
-        battery = (buf[0] | buf[1] << 8) / BATTERY_CONVERSION; 
-        break;
+    int start = hs.read();
+    if (start == 0x16) {
+      int header = hs.read();
+      switch (header) {
+        case SerialEncoder:
+        {
+          uint8_t enc = hs.read();
+          encoders += enc;
+          break;
+        }
+        case SerialBattery:
+        {
+          uint8_t buf[2] = { 0 };
+          hs.readBytes(buf, sizeof(buf));
+          battery = (buf[0] | buf[1] << 8) / BATTERY_CONVERSION; 
+          break;
+        }
       }
     }
+    
   }
 }

@@ -5,18 +5,21 @@
 #include <imu.h>
 #include <pid.h>
 #include <math.h>
+#include <timer.h>
 
 vector2_t position = {.x = 0, .y = -1000};
-PID servoPid(0.7f, 0.1f, 0.35f);
+PID servoPid(0.05f, 0.01f, 0.015f);
 Imu imu;
+Timer nav_timer(20);
 
 void updatePosition(vector2_t *pos, float angle, int encoders) {
-    pos->x += encoders * cos(angle);
-    pos->y += encoders * sin(angle);
+    pos->x += encoders * cos(angle) * 3.86f;
+    pos->y += encoders * sin(angle) * 3.86f;
+    // debug_msg("X: %f, Y: %f", pos->x, pos->y);
     debug_position(*pos);
 }
 
-float axisError(vector2_t pos, int turn, int clocksise) {
+float axisError(vector2_t pos, int turn, int clockwise) {
   float target = -1000;
   float current = pos.y;
 
@@ -32,10 +35,19 @@ float axisError(vector2_t pos, int turn, int clocksise) {
   return error;
 }
 
+int turn = 0;
+int clockwise = 1;
 void square() {
-  float error = axisError(position, 0, 1);
-  float servoValue = servoPid.update(error);
+  float error = axisError(position, turn, clockwise);
+  float targetAngle = turn * (PI/2) * clockwise; // -1 if clockwise
 
+  float angleDiff = targetAngle - imu.rotation;
+  float minAngle = -(PI / 2) + angleDiff;
+  float maxAngle = (PI / 2) - angleDiff;
+
+  // debug_msg("min: %f, max %f", minAngle, maxAngle);
+
+  float servoValue = servoPid.update(error);
   debug_msg("err: %f, ser: %f", error, servoValue);
 
   servoAngle(servoValue);
@@ -43,23 +55,30 @@ void square() {
 
 
 void setup() {
-  delay(5000);
+  delay(1000);
   debug_init();
   slaveSetup();
   
-  imu.setup();
+  imu.setup(); 
   debug_msg("Setup completed");
 
   servoAngle(0.0f);
-  motorSpeed(220);
+  motorSpeed(3);
 }
 
 void loop() {
   slaveProcessSerial();
-  imu.update();
-  updatePosition(&position, imu.rotation, getEncoders());
+  if(imu.update()) {
+    debug_current_direction(imu.rotation);
+  }
 
-  square();
 
-  delay(20);
+
+  int encoders = getEncoders();
+  updatePosition(&position, imu.rotation, encoders);
+
+  if (nav_timer.primed()) {
+    square();
+  }
+  motorSpeed(3);
 }
