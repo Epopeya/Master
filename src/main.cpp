@@ -8,7 +8,7 @@
 #include <timer.h>
 
 vector2_t position = {.x = 0, .y = -1000};
-PID servoPid(0.05f, 0.01f, 0.015f);
+PID servoPid(0.7f, 0.15f, 0.45f);
 Imu imu;
 Timer nav_timer(20);
 
@@ -32,6 +32,7 @@ float axisError(vector2_t pos, int turn, int clockwise) {
   if (turn > 1) {
     error *= -1;
   }
+  error *= 0.005f;
   return error;
 }
 
