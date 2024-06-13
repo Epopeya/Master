@@ -13,17 +13,19 @@ HardwareSerial lidar_serial(2);
 RPLidar lidar;
 TaskHandle_t lidar_task;
 float front_distance, right_distance, left_distance = 0.0;
+extern int turn_count;
 extern Imu imu;
 
 void lidarTask(void *pvParameters) {
   for (;;) {
+    vTaskDelay(1);
     if (IS_OK(lidar.waitPoint())) {
       RPLidarMeasurement point = lidar.getCurrentPoint();
       float distance = point.distance; // distance value in mm unit
       float angle = point.angle;       // angle value in degrees
 
       if (!(distance < 10.0 || distance > 3000.0)) {
-        float r_angle = angle + imu.rotation * (-1) * (360 / (2 * M_PI));
+        float r_angle = angle + (turn_count * (M_PI / 2) - imu.rotation) * (360 / (2 * M_PI));
 
         // front
         if (r_angle < CHECK_ANGLE || r_angle > 360 - CHECK_ANGLE) {

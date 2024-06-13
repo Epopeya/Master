@@ -8,10 +8,11 @@
 #include <slave.h>
 #include <timer.h>
 
-vector2_t position = {.x = 0, .y = -1000};
-PID servoPid(0.7f, 0.15f, 0.45f);
+vector2_t position = {.x = -1000, .y = -1000};
+PID servoPid(0.5f, 0.15f, 0.25f);
 Imu imu;
 Timer nav_timer(20);
+int turn_count = 0;
 
 void updatePosition(vector2_t *pos, float angle, int encoders) {
   pos->x += encoders * cos(angle) * 3.86f;
@@ -20,38 +21,17 @@ void updatePosition(vector2_t *pos, float angle, int encoders) {
   debug_position(*pos);
 }
 
-float axisError(vector2_t pos, int turn, int clockwise) {
-  float target = -1000;
-  float current = pos.y;
-
-  if (turn % 2 == 1) {
-    current = pos.x;
-  }
-
-  float error = target - current;
-
-  if (turn > 1) {
-    error *= -1;
-  }
-  error *= 0.005f;
-  return error;
+float angleToAxis(vector2_t pos/* int height, bool vertical*/) {
+  return ((-1000) - pos.y) * 0.0005;
 }
 
 int turn = 0;
 int clockwise = 1;
 void square() {
-  float error = axisError(position, turn, clockwise);
-  float targetAngle = turn * (PI / 2) * clockwise; // -1 if clockwise
-
-  float angleDiff = targetAngle - imu.rotation;
-  float minAngle = -(PI / 2) + angleDiff;
-  float maxAngle = (PI / 2) - angleDiff;
-
-  // debug_msg("min: %f, max %f", minAngle, maxAngle);
-
-  float servoValue = servoPid.update(error);
-  debug_msg("err: %f, ser: %f", error, servoValue);
-
+  servoPid.target = angleToAxis(position);
+  float servoValue = servoPid.update(imu.rotation);
+  //servoValue = constrain(servoValue, minAngle, maxAngle);
+  // debug_msg("err: %f, ser: %f", error, servoValue);
   servoAngle(servoValue);
 }
 
@@ -60,9 +40,9 @@ void setup() {
   debug_init();
   slaveSetup();
   imu.setup();
-  lidarSetup();
-  position = lidarInitialPosition();
-  lidarStart();
+  // lidarSetup();
+  // position = lidarInitialPosition();
+  // lidarStart();
   debug_msg("Setup completed");
 
   servoAngle(0.0f);
