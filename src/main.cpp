@@ -71,6 +71,9 @@ void square() {
 }
 
 void setup() {
+  pinMode(33, INPUT_PULLUP);
+  pinMode(26, OUTPUT);
+
   delay(1000);
   debug_init();
   slaveSetup();
@@ -81,6 +84,13 @@ void setup() {
   debug_msg("Setup completed");
 
   servoAngle(0.0f);
+
+  // Wait for the user to press the start button
+  digitalWrite(26, HIGH);
+  while(digitalRead(33)) {}
+  digitalWrite(26, LOW);
+  delay(500); // Some time for the user to get their finger out of the way, otherwise their finger could easily be cut off in a very awful way. Not recommended.
+
   motorSpeed(3);
 }
 
