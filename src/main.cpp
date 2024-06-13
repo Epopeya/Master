@@ -2,6 +2,7 @@
 #include <debug.h>
 #include <geometry.h>
 #include <imu.h>
+#include <lidar.h>
 #include <math.h>
 #include <pid.h>
 #include <slave.h>
@@ -58,8 +59,10 @@ void setup() {
   delay(1000);
   debug_init();
   slaveSetup();
-
   imu.setup();
+  lidarSetup();
+  position = lidarInitialPosition();
+  lidarStart();
   debug_msg("Setup completed");
 
   servoAngle(0.0f);
