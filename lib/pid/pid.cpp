@@ -10,7 +10,7 @@ float PID::update(float value) {
     float error_rate = (error - last_error) / dt;
     float output = KP * error + KI * cumulative_error + KD * error_rate;
 
-    debug_msg("error: %f, XP: %f, XI: %f, XD: %f, out: %f\n", error, error * KP, KI * cumulative_error, KD * error_rate, output);
+    //debug_msg("error: %f, XP: %f, XI: %f, XD: %f, out: %f\n", error, error * KP, KI * cumulative_error, KD * error_rate, output);
 
     last_update = current_time;
     last_error = error;

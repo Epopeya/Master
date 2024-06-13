@@ -2,7 +2,6 @@
 #include <RPLidar.h>
 #include <debug.h>
 #include <imu.h>
-#include <math.h>
 
 #define RPLIDAR_MOTOR 5
 #define SMOOTHING 0.01f // lower = more smoothing
@@ -25,7 +24,7 @@ void lidarTask(void *pvParameters) {
       float angle = point.angle;       // angle value in degrees
 
       if (!(distance < 10.0 || distance > 3000.0)) {
-        float r_angle = angle + (turn_count * (M_PI / 2) - imu.rotation) * (360 / (2 * M_PI));
+        float r_angle = angle + (turn_count * (PI / 2) - imu.rotation) * (360 / (2 * PI));
 
         // front
         if (r_angle < CHECK_ANGLE || r_angle > 360 - CHECK_ANGLE) {
