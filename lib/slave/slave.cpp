@@ -1,4 +1,5 @@
 #include "slave.h"
+#include "debug.h"
 #include <Arduino.h>
 
 HardwareSerial hs(1);
@@ -70,7 +71,8 @@ void parseBlocks() {
 
   int x = buf[1] | (buf[2] << 8) | (buf[3] << 16) | (buf[4] << 24);
   int y = buf[5] | (buf[6] << 8) | (buf[7] << 16) | (buf[8] << 24);
-  bool in_scene = !(x == -1 && y == -1);
+  bool in_scene = !(x < 0 && y < 0);
+  debug_msg("x: %i, y: %i", x, y);
 
   switch (buf[0]) {
   case 0: // Green

@@ -26,8 +26,6 @@ float angleToAxis(float from, float to) {
   return constrain(angle, -(PI / 2), (PI / 2));
 }
 
-void nearestAxis(int turn, int clockwise) {}
-
 int getTurnSign(int count) {
   int offset = (count < 0) ? 3 : 0;
   int values[] = {1, -1, -1, 1};
@@ -52,12 +50,25 @@ float getAxisPosition(int count) {
   return 0;
 }
 
+#define BLOCK_OFFSET
+float getCameraOffset(int counter) {
+  float offset = 0;
+  if (green_block.in_scene) {
+    offset = -200;
+  } else if (red_block.in_scene) {
+    offset = 200;
+  }
+  return offset * ((counter > 2) ? 1 : -1);
+}
+
 float doubleSquare() {
+  int mod_turn_count = turn_count % 4;
+
+  float cam_offset = getCameraOffset(mod_turn_count);
+  debug_msg("cam: %f", cam_offset);
   if (turn_count == 0) {
     return angleToAxis(position.y, 0);
   }
-
-  int mod_turn_count = turn_count % 4;
 
   int sign = getTurnSign(mod_turn_count);
   float from = (turn_count % 2) ? position.x : position.y;
@@ -88,7 +99,7 @@ int getZone(int turn_sign) {
 void checkBoundaries() {
   if (turn_count == 0 && position.x > 500) {
     // if (left_distance > 1500) {
-    if (false) {
+    if (true) {
       debug_msg("Turn count UP 🥙");
       turn_count++;
       last_zone = 1;
@@ -113,40 +124,6 @@ void checkBoundaries() {
   }
 }
 
-/*
-int turn = 0;
-int clockwise = 1;
-void square() {
-  int mod_turn_count = turn_count % 4;
-  int turn_direction = -1; // 1 anticlockwise, -1 clockwise
-                           // turndurection % 2 true if odd
-  float direction_from = (turn_count % 2) ? position.x : position.y;
-  float direction_to =
-      (mod_turn_count == 0 || mod_turn_count == 3) ? -1000 : 1000;
-
-  if (turn_direction == -1 && (mod_turn_count == 1 || mod_turn_count == 3)) {
-    direction_to *= -1;
-  }
-
-  float direction =
-      ((mod_turn_count == 0 || mod_turn_count == 3) ? 1 : -1) *
-turn_direction;
-
-  debug_msg("turn: %i, to: %f, dir: %f\n", mod_turn_count, direction_to,
-            direction);
-  turn_count++;
-  float angle = turn_count * (PI / 2);
-  servoPid.target = angle + angleToAxis(position.y, -1000) *
-                                direction; // + right and down, - left and up
-
-  debug_target_direction(servoPid.target);
-  float servoValue = servoPid.update(imu.rotation);
-  // servoValue = constrain(servoValue, minAngle, maxAngle);
-  //  debug_msg("err: %f, ser: %f", error, servoValue);
-  servoAngle(servoValue);
-}
-*/
-
 void setup() {
   pinMode(33, INPUT_PULLUP);
   pinMode(26, OUTPUT);
@@ -160,17 +137,14 @@ void setup() {
   lidarStart();
   debug_msg("Setup completed");
 
-  servoAngle(0.0f);
-
   // Wait for the user to press the start button
   digitalWrite(26, HIGH);
   while (digitalRead(33)) {
   }
   digitalWrite(26, LOW);
   delay(500); // Some time for the user to get their finger out of the way,
-              // otherwise their finger could easily be cut off in a very awful
-              // way. Not recommended.
-
+              // otherwise their finger could easily be cut off in a very
+              // awful way. Not recommended.
   motorSpeed(4);
 }
 
