@@ -54,9 +54,9 @@ float getAxisPosition(int count) {
 float getCameraOffset(int counter) {
   float offset = 0;
   if (green_block.in_scene) {
-    offset = -200;
-  } else if (red_block.in_scene) {
     offset = 200;
+  } else if (red_block.in_scene) {
+    offset = -200;
   }
   return offset * ((counter > 2) ? 1 : -1);
 }
@@ -66,19 +66,19 @@ float doubleSquare() {
 
   float cam_offset = getCameraOffset(mod_turn_count);
   debug_msg("cam: %f", cam_offset);
-  if (turn_count == 0) {
+  
+  if (turn_count == 0) { // Maybe remove
     return angleToAxis(position.y, 0);
   }
 
   int sign = getTurnSign(mod_turn_count);
   float from = (turn_count % 2) ? position.x : position.y;
-  float to = getAxisPosition(mod_turn_count);
+  float to = (getAxisPosition(mod_turn_count) + cam_offset * sign);
 
-  // debug_msg("to: %f", to);
   float angle = turn_count * (PI / 2) + (angleToAxis(from, to) * sign);
   return angle;
 }
-
+// from to angle
 int last_zone = 0;
 int getZone(int turn_sign) {
   if (position.y < 500 && position.y > -500 && position.x < 500) {
@@ -131,24 +131,35 @@ void setup() {
   delay(1000);
   debug_init();
   slaveSetup();
+  slaveProcessSerial();
   imu.setup();
   lidarSetup();
   // position = lidarInitialPosition();
   lidarStart();
   debug_msg("Setup completed");
 
-  // Wait for the user to press the start button
-  digitalWrite(26, HIGH);
-  while (digitalRead(33)) {
-  }
-  digitalWrite(26, LOW);
-  delay(500); // Some time for the user to get their finger out of the way,
-              // otherwise their finger could easily be cut off in a very
-              // awful way. Not recommended.
-  motorSpeed(4);
+  // // Wait for the user to press the start button
+  // digitalWrite(26, HIGH);
+  // while (digitalRead(33)) {
+  // }
+  // digitalWrite(26, LOW);
+  // delay(500); // Some time for the user to get their finger out of the way,
+  //             // otherwise their finger could easily be cut off in a very
+  //             // awful way. Not recommended.
 }
 
+Timer batteryTimer(1000);
+
 void loop() {
+  if(batteryTimer.primed()) {
+    if (battery < 4) {
+      motorSpeed(0);
+    } else {
+      motorSpeed(350);
+    }
+    debug_battery(battery);
+  }
+  
   slaveProcessSerial();
   if (imu.update()) {
     debug_current_direction(imu.rotation);
@@ -156,7 +167,6 @@ void loop() {
 
   int encoders = getEncoders();
   updatePosition(&position, imu.rotation, encoders);
-
   if (nav_timer.primed()) {
     checkBoundaries();
     servoPid.target = doubleSquare();

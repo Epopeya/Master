@@ -14,3 +14,4 @@ typedef struct {
 
 extern block_t red_block;
 extern block_t green_block;
+extern float battery;

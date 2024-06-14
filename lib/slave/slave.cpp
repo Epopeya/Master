@@ -57,7 +57,7 @@ int getEncoders() {
 void parseBattery() {
   uint8_t buf[2] = {0};
   hs.readBytes(buf, sizeof(buf));
-  battery = (buf[0] | buf[1] << 8) / BATTERY_CONVERSION;
+  battery = (buf[0] | (buf[1] << 8)) / BATTERY_CONVERSION;
 }
 
 void parseEncoders() {
