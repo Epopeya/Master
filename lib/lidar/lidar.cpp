@@ -51,7 +51,7 @@ void lidarSetup() {
   analogWrite(RPLIDAR_MOTOR, 255);
 }
 
-#define MEDIAN_ROUNDS 20
+#define MEDIAN_ROUNDS 50
 vector2_t lidarInitialPosition() {
   vector2_integer_t counter = {.x = 0, .y = 0};
   vector2_t start_distances = {.x = 0, .y = 0};
@@ -75,14 +75,10 @@ vector2_t lidarInitialPosition() {
       }
     }
   }
-  start_distances.x /= MEDIAN_ROUNDS;
-  start_distances.y /= MEDIAN_ROUNDS;
+  start_distances.x /= counter.x;
+  start_distances.y /= counter.y;
 
-  left_distance = start_distances.y;
-  right_distance = 1000 - start_distances.y;
-  front_distance = start_distances.x;
-
-  return {.x = 1500 - start_distances.x, .y = -500 - start_distances.y};
+  return start_distances;
 }
 
 void lidarStart() {
