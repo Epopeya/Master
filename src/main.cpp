@@ -8,9 +8,9 @@
 #include <slave.h>
 #include <timer.h>
 
-//#define SIMULATE_MOVEMENT
+#define SIMULATE_MOVEMENT
 
-vector2_t position = {.x = 0, .y = 0};
+vector2_t position = { .x = 0, .y = 0 };
 PID servoPid(0.5f, 0.08f, 0.35f);
 Imu imu;
 Timer nav_timer(20);
@@ -27,45 +27,28 @@ float angleToAxis(float from, float to) {
   return constrain(angle, -(PI / 2), (PI / 2));
 }
 
-
 int turn_count = 0;
 
-int camera_offset_axis = 0;
-int camera_offset_until = 0;
-int camera_offset_color = 0;
-void updateOffset(int zone) {
-  camera_offset_axis = (zone % 2) ? 1 : 2;
-  
-  if (camera_offset_axis == 0) {
-    camera_offset_until = position.x + 100 * sign(cos(turn_count * (PI / 2)));
-  } else if (camera_offset_axis == 1) {
-    camera_offset_until = position.y + 100 * sign(sin(turn_count * (PI / 2)));
-  }
-}
-
-int last_distance_to_offset = 0;
-
-#define BLOCK_OFFSET
-float getCameraOffset(int zone, int sign_) {
+#define BLOCK_FIXED_OFFSET 200
+#define MIN_AFTER_DISTANCE 200
+float last_block = 0;  // last recorded position of the block
+float cam_offset = 0;
+void camOffsetGood(int zone) {
+  float pos = (turn_count % 2) ? position.y : position.x;
   if (green_block.in_scene) {
-      updateOffset(zone);
-      camera_offset_color = 1;
-    } else if (red_block.in_scene) {
-      updateOffset(zone);
-      camera_offset_color = -1;
+    cam_offset = BLOCK_FIXED_OFFSET;
+    last_block = pos;
+  } else if (red_block.in_scene) {
+    cam_offset = -BLOCK_FIXED_OFFSET;
+    last_block = pos;
   }
 
-  if(camera_offset_axis != 0) {
-    float pos = (camera_offset_axis == 1) ? position.x : position.y;
-    float distance_to_offset = camera_offset_until - pos;
-    if(sign(distance_to_offset) != sign(last_distance_to_offset)) {
-      camera_offset_axis = 0;
-      camera_offset_until = 0;
-    } else {
-      last_distance_to_offset = distance_to_offset;
-      return 200 * camera_offset_color * sign_;
-    }
-    
+  if (abs(last_block - pos) > MIN_AFTER_DISTANCE) {
+    cam_offset = 0;
+  }
+
+  if (cam_offset != 0) {
+    debug_msg("cam_offset until: %f", 100 - abs(last_block - pos));
   }
 }
 
@@ -81,30 +64,28 @@ float zoneGood() {
     to = 0;
     sign = 1;
     zone = 0;
-  }
-  else if (position.x > 500 && position.y < 1500 && position.y > -1500) {
+  } else if (position.x > 500 && position.y < 1500 && position.y > -1500) {
     to = 1000;
     sign = -1 * orientation;
     zone = 1;
-  }
-  else if (position.x > -500 && (position.y > 1500 || position.y < -1500)) {
+  } else if (position.x > -500 && (position.y > 1500 || position.y < -1500)) {
     to = 2000 * orientation;
     sign = -1;
     zone = 2;
-  }
-  else if (position.x < -500 && (position.y > 500 || position.y < -500)) {
+  } else if (position.x < -500 && (position.y > 500 || position.y < -500)) {
     to = -1000;
     sign = 1 * orientation;
     zone = 3;
   }
 
-  to += getCameraOffset(zone, sign);
+  camOffsetGood(zone);
+  to += cam_offset * sign;
 
   float angle = turn_count * (PI / 2) + (angleToAxis(from, to) * sign);
 
-  // imu.rotation = angle;
   if (zone != last_zone) {
     turn_count += orientation;
+    cam_offset = 0;
     debug_msg("zone change to turn: %i 🦔", turn_count);
   }
   last_zone = zone;
@@ -118,17 +99,20 @@ void setup() {
   pinMode(33, INPUT_PULLUP);
   pinMode(26, OUTPUT);
 
-  delay(1000);
+  delay(200);
   debug_init();
   slaveSetup();
   slaveProcessSerial();
   imu.setup();
-  lidarSetup();
-  vector2_t start_distances = lidarInitialPosition();
-  position.x = 1500 - start_distances.x;
-  position.y = 500 - start_distances.y;
-  start_distance_y = start_distances.y;
-  lidarStart();
+
+  if (battery > 4) {
+    lidarSetup();
+    vector2_t start_distances = lidarInitialPosition();
+    position.x = 1500 - start_distances.x;
+    position.y = 500 - start_distances.y;
+    start_distance_y = start_distances.y;
+    lidarStart();
+  }
   debug_msg("Setup completed");
 
   // // Wait for the user to press the start button
@@ -145,7 +129,7 @@ void setup() {
 Timer batteryTimer(1000);
 
 void loop() {
-  if(batteryTimer.primed()) {
+  if (batteryTimer.primed()) {
     if (battery < 4) {
       motorSpeed(0);
     } else {
@@ -153,28 +137,31 @@ void loop() {
     }
     debug_battery(battery);
   }
-  
+
   slaveProcessSerial();
-  #ifdef SIMULATE_MOVEMENT
+#ifdef SIMULATE_MOVEMENT
   debug_current_direction(imu.rotation);
-  #else
+#else
   if (imu.update()) {
     debug_current_direction(imu.rotation);
   }
-  #endif
+#endif
 
   if (nav_timer.primed()) {
-    #ifdef SIMULATE_MOVEMENT
+#ifdef SIMULATE_MOVEMENT
+    orientation = -1;
     updatePosition(&position, imu.rotation, 4);
-    imu.rotation += servoPid.update(imu.rotation) * 0.04;
-    #else
-
+	imu.rotation = servoPid.target;
+    /* imu.rotation += servoPid.update(imu.rotation) * 0.04; */
+#else
     updatePosition(&position, imu.rotation, getEncoders());
-    #endif
+#endif
 
     // Initial Turn
-    if(orientation == 0) {
-      if(left_distance > 1500) {
+    /* if (orientation == 0) { */
+	orientation = 1;
+    if (false) {
+      if (left_distance > 1500) {
         orientation = 1;
         //position.y = 500 - start_distance_y;
         zoneGood();
@@ -183,7 +170,7 @@ void loop() {
         //position.y = start_distance_y - 500;
         zoneGood();
       }
-    } 
+    }
     // Standard Navigation
     else {
       servoPid.target = zoneGood();
