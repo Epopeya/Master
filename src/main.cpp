@@ -27,10 +27,51 @@ float angleToAxis(float from, float to) {
   return constrain(angle, -(PI / 2), (PI / 2));
 }
 
+
+int turn_count = 0;
+
+int camera_offset_axis = 0;
+int camera_offset_until = 0;
+int camera_offset_color = 0;
+void updateOffset(int zone) {
+  camera_offset_axis = (zone % 2) ? 1 : 2;
+  
+  if (camera_offset_axis == 0) {
+    camera_offset_until = position.x + 100 * sign(cos(turn_count * (PI / 2)));
+  } else if (camera_offset_axis == 1) {
+    camera_offset_until = position.y + 100 * sign(sin(turn_count * (PI / 2)));
+  }
+}
+
+int last_distance_to_offset = 0;
+
+#define BLOCK_OFFSET
+float getCameraOffset(int zone, int sign_) {
+  if (green_block.in_scene) {
+      updateOffset(zone);
+      camera_offset_color = 1;
+    } else if (red_block.in_scene) {
+      updateOffset(zone);
+      camera_offset_color = -1;
+  }
+
+  if(camera_offset_axis != 0) {
+    float pos = (camera_offset_axis == 1) ? position.x : position.y;
+    float distance_to_offset = camera_offset_until - pos;
+    if(sign(distance_to_offset) != sign(last_distance_to_offset)) {
+      camera_offset_axis = 0;
+      camera_offset_until = 0;
+    } else {
+      last_distance_to_offset = distance_to_offset;
+      return 200 * camera_offset_color * sign_;
+    }
+    
+  }
+}
+
 int orientation = 0;
 int last_zone = 0;
 int zone = 0;
-int turn_count = 0;
 float zoneGood() {
   float from = (turn_count % 2) ? position.x : position.y;
   float to = from;
@@ -56,6 +97,8 @@ float zoneGood() {
     sign = 1 * orientation;
     zone = 3;
   }
+
+  to += getCameraOffset(zone, sign);
 
   float angle = turn_count * (PI / 2) + (angleToAxis(from, to) * sign);
 
