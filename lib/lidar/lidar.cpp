@@ -4,7 +4,7 @@
 #include <imu.h>
 
 #define RPLIDAR_MOTOR 5
-#define SMOOTHING 0.01f // lower = more smoothing
+#define SMOOTHING 0.01f  // lower = more smoothing
 #define INV_SMOOTHING (1 - SMOOTHING)
 #define CHECK_ANGLE 10
 
@@ -20,8 +20,8 @@ void lidarTask(void *pvParameters) {
     vTaskDelay(1);
     if (IS_OK(lidar.waitPoint())) {
       RPLidarMeasurement point = lidar.getCurrentPoint();
-      float distance = point.distance; // distance value in mm unit
-      float angle = point.angle;       // angle value in degrees
+      float distance = point.distance;  // distance value in mm unit
+      float angle = point.angle;        // angle value in degrees
 
       if (!(distance < 10.0 || distance > 3000.0)) {
         float r_angle = angle + (turn_count * (PI / 2) - imu.rotation) * (360 / (2 * PI));
@@ -51,15 +51,15 @@ void lidarSetup() {
   analogWrite(RPLIDAR_MOTOR, 255);
 }
 
-#define MEDIAN_ROUNDS 50
+#define MEDIAN_ROUNDS 100
 vector2_t lidarInitialPosition() {
-  vector2_integer_t counter = {.x = 0, .y = 0};
-  vector2_t start_distances = {.x = 0, .y = 0};
+  vector2_integer_t counter = { .x = 0, .y = 0 };
+  vector2_t start_distances = { .x = 0, .y = 0 };
   while (counter.x < MEDIAN_ROUNDS || counter.y < MEDIAN_ROUNDS) {
     if (IS_OK(lidar.waitPoint())) {
       RPLidarMeasurement point = lidar.getCurrentPoint();
-      float distance = point.distance; // distance value in mm unit
-      float angle = point.angle;       // angle value in degrees
+      float distance = point.distance;  // distance value in mm unit
+      float angle = point.angle;        // angle value in degrees
 
       if (!(distance < 10.0 || distance > 3000.0)) {
         if (angle < 5 || angle > 355) {

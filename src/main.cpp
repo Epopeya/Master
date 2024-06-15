@@ -8,9 +8,9 @@
 #include <slave.h>
 #include <timer.h>
 
-#define SIMULATE_MOVEMENT
+/*#define SIMULATE_MOVEMENT*/
 
-PID servoPid(0.5f, 0.08f, 0.35f);
+PID servoPid(1.0f, 0.08f, 0.15f);
 Imu imu;
 Timer nav_timer(20);
 
@@ -23,7 +23,7 @@ void updatePosition(vector2_t *pos, float angle, int encoders) {
 }
 
 #define ERROR_COEFICENT 0.005f
-#define ANGLE_CONSTRAINT PI / 3
+#define ANGLE_CONSTRAINT PI / 2
 float angleToAxis(float from, float to) {
   float angle = (to - from) * ERROR_COEFICENT;
   return constrain(angle, -ANGLE_CONSTRAINT, ANGLE_CONSTRAINT);
@@ -31,19 +31,20 @@ float angleToAxis(float from, float to) {
 
 int turn_count = 0;
 
-#define BLOCK_FIXED_OFFSET 250
-#define MIN_AFTER_DISTANCE 200
+#define BLOCK_FIXED_OFFSET 225
+#define MIN_AFTER_DISTANCE 750
 float last_block = 0;  // last recorded position of the block
 float cam_offset = 0;
 void camOffsetGood(int zone) {
   float pos = (turn_count % 2) ? position.y : position.x;
   if (green_block.in_scene) {
+    /*if (true) {*/
     if (cam_offset == 0) { debug_msg("green block"); }
-    cam_offset = BLOCK_FIXED_OFFSET;  // left
+    cam_offset = -BLOCK_FIXED_OFFSET;  // left
     last_block = pos;
   } else if (red_block.in_scene) {
     if (cam_offset == 0) { debug_msg("red block"); }
-    cam_offset = -BLOCK_FIXED_OFFSET;  // right
+    cam_offset = BLOCK_FIXED_OFFSET;  // right
     last_block = pos;
   }
 
@@ -56,8 +57,7 @@ int orientation = 0;
 int last_zone = 0;
 int zone = 0;
 float zoneGood() {
-  float from = (turn_count % 2) ? position.x : position.y;
-  float to = from;
+  float to = 0;
   float sign = 0;
 
   if (position.y < 500 && position.y > -500 && position.x < 500) {
@@ -79,16 +79,20 @@ float zoneGood() {
   }
 
   camOffsetGood(zone);
-  to += cam_offset * sign * orientation;
-
-  float angle = turn_count * (PI / 2) + (angleToAxis(from, to) * sign);
+  to += cam_offset * sign;
 
   if (zone != last_zone) {
     turn_count += orientation;
     cam_offset = 0;
     debug_msg("zone change to turn: %i 🦔", turn_count);
   }
+
+  float from = (turn_count % 2) ? position.x : position.y;
+  float angle = turn_count * (PI / 2) + (angleToAxis(from, to) * sign);
+
+
   last_zone = zone;
+
 
   return angle;
 }
@@ -108,7 +112,7 @@ void setup() {
   if (battery > 4) {
     lidarSetup();
     vector2_t start_distances = lidarInitialPosition();
-    position.x = 1500 - start_distances.x;
+    position.x = 1500 - start_distances.x - 150;
     position.y = 500 - start_distances.y;
     start_distance_y = start_distances.y;
     lidarStart();
@@ -125,7 +129,7 @@ void setup() {
   if (battery < 4) {
     motorSpeed(0);
   } else {
-    motorSpeed(150);
+    motorSpeed(300);
   }
 
   servoPid.target = 0;
@@ -148,20 +152,26 @@ void loop() {
     debug_current_direction(servoPid.target);
 #endif
 
+
+    while (turn_count >= 13) {
+      motorSpeed(0);
+      servoAngle(0);
+      delay(100);
+    }
+
     // Initial Turn
     if (orientation == 0) {
       if (left_distance > 1500) {
         debug_msg("setting orientation to %i", orientation);
         orientation = 1;
-        position.y = 500 - start_distance_y;
       } else if (right_distance > 1500) {
         debug_msg("setting orientation to %i", orientation);
         orientation = -1;
-        position.y = start_distance_y - 500;
       }
-    }
-    // Standard Navigation
-    else {
+      servoPid.target = angleToAxis(position.y, 0);
+
+      // Standard Navigation
+    } else {
       servoPid.target = zoneGood();
     }
     debug_target_direction(servoPid.target);
