@@ -10,7 +10,7 @@
 
 /*#define SIMULATE_MOVEMENT*/
 
-PID servoPid(1.0f, 0.08f, 0.15f);
+PID servoPid(1.3f, 0.08f, 0.15f);
 Imu imu;
 Timer nav_timer(20);
 
@@ -31,20 +31,19 @@ float angleToAxis(float from, float to) {
 
 int turn_count = 0;
 
-#define BLOCK_FIXED_OFFSET 225
-#define MIN_AFTER_DISTANCE 750
+#define BLOCK_FIXED_OFFSET 300
+#define MIN_AFTER_DISTANCE 1000
 float last_block = 0;  // last recorded position of the block
 float cam_offset = 0;
 void camOffsetGood(int zone) {
   float pos = (turn_count % 2) ? position.y : position.x;
-  if (green_block.in_scene) {
-    /*if (true) {*/
+  if (green_block.in_scene && cam_offset == 0) {
     if (cam_offset == 0) { debug_msg("green block"); }
-    cam_offset = -BLOCK_FIXED_OFFSET;  // left
+    cam_offset = BLOCK_FIXED_OFFSET;  // left
     last_block = pos;
-  } else if (red_block.in_scene) {
+  } else if (red_block.in_scene && cam_offset == 0) {
     if (cam_offset == 0) { debug_msg("red block"); }
-    cam_offset = BLOCK_FIXED_OFFSET;  // right
+    cam_offset = -BLOCK_FIXED_OFFSET;  // right
     last_block = pos;
   }
 
