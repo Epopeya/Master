@@ -5,6 +5,5 @@ class Imu {
         void setup();
         float rotation;
         bool update();
-    private:
-        float offset;
+        void calibrate();
 };

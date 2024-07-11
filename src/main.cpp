@@ -103,6 +103,7 @@ void setup() {
 
   debug_init();
   slaveSetup();
+  imu.calibrate(); // Remove after first calibration
   imu.setup();
 
   while (battery < 0.01f) { slaveProcessSerial(); }  // WARN
