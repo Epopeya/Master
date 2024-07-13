@@ -1,15 +1,16 @@
 #include "imu.h"
-#include <Arduino.h>
-#include <MPU9250.h>
-#include <EEPROM.h>
 #include "debug.h"
+#include <Arduino.h>
+#include <EEPROM.h>
+#include <MPU9250.h>
 
 MPU9250 mpu;
 #define EEPROM_SIZE 1024
 unsigned long last_update;
 float rotation;
 
-void Imu::setup() {
+void Imu::setup()
+{
     Wire.begin();
     EEPROM.begin(EEPROM_SIZE);
     rotation = 0;
@@ -17,8 +18,8 @@ void Imu::setup() {
     mpu.setup(0x68);
 
     bool isCalibrated = EEPROM.readByte(0x00);
-    if(isCalibrated) {
-        float x,y,z = 0;
+    if (isCalibrated) {
+        float x, y, z = 0;
 
         x = EEPROM.readFloat(0x01);
         y = EEPROM.readFloat(0x01 + 4);
@@ -46,11 +47,11 @@ void Imu::setup() {
         mpu.setMagBias(0., 0., 0.);
         mpu.setMagScale(1., 1., 1.);
     }
-
 }
 
-bool Imu::update() {
-    if(mpu.update()) {
+bool Imu::update()
+{
+    if (mpu.update()) {
         rotation = mpu.getYaw() * (PI / 180);
         return true;
     } else {
@@ -58,7 +59,8 @@ bool Imu::update() {
     }
 }
 
-void Imu::calibrate() {
+void Imu::calibrate()
+{
     mpu.verbose(true);
     debug_msg("Initiating calibration...\nPlease keep the IMU still");
     mpu.calibrateAccelGyro();
@@ -67,17 +69,17 @@ void Imu::calibrate() {
     debug_msg("Calibration complete\nStoring values to EEPROM");
 
     EEPROM.writeByte(0x00, 1);
-    for(int i = 0; i < 3; i++) {
-        EEPROM.writeFloat(0x01 + i*4, mpu.getAccBias(i));
+    for (int i = 0; i < 3; i++) {
+        EEPROM.writeFloat(0x01 + i * 4, mpu.getAccBias(i));
     }
-    for(int i = 0; i < 3; i++) {
-        EEPROM.writeFloat(0x0D + i*4, mpu.getGyroBias(i));
+    for (int i = 0; i < 3; i++) {
+        EEPROM.writeFloat(0x0D + i * 4, mpu.getGyroBias(i));
     }
-    for(int i = 0; i < 3; i++) {
-        EEPROM.writeFloat(0x19 + i*4, mpu.getMagBias(i));
+    for (int i = 0; i < 3; i++) {
+        EEPROM.writeFloat(0x19 + i * 4, mpu.getMagBias(i));
     }
-    for(int i = 0; i < 3; i++) {
-        EEPROM.writeFloat(0x25 + i*4, mpu.getMagScale(i));
+    for (int i = 0; i < 3; i++) {
+        EEPROM.writeFloat(0x25 + i * 4, mpu.getMagScale(i));
     }
     EEPROM.commit();
 }

@@ -2,10 +2,13 @@
 #include <Arduino.h>
 
 class Timer {
-    public:
-    Timer(int time): time(time), last_time(millis()) {};
+public:
+    Timer(int time)
+        : time(time)
+        , last_time(millis()) {};
     int time;
     bool primed();
-    private:
+
+private:
     unsigned long last_time;
 };

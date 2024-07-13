@@ -7,9 +7,9 @@ int getEncoders();
 void slaveProcessSerial();
 
 typedef struct {
-  bool in_scene;
-  int x;
-  int y;
+    bool in_scene;
+    int x;
+    int y;
 } block_t;
 
 extern block_t red_block;
