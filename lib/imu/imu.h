@@ -5,5 +5,7 @@ public:
     void setup();
     float rotation;
     bool update();
-    void calibrate();
+
+private:
+    float offset;
 };
