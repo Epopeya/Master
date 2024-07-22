@@ -3,6 +3,7 @@
 void slaveSetup();
 void servoAngle(float angle);
 void motorSpeed(int speed);
+extern int total_encoders;
 int getEncoders();
 void slaveProcessSerial();
 

@@ -3,11 +3,12 @@
 #include <Arduino.h>
 
 HardwareSerial hs(1);
-int encoders;
 float battery;
 
 block_t red_block;
 block_t green_block;
+
+int total_encoders;
 
 // WARN: This will block until slave communicates!
 void slaveSetup()
@@ -16,7 +17,7 @@ void slaveSetup()
     red_block = { .in_scene = false, .x = 0, .y = 0 };
     green_block = { .in_scene = false, .x = 0, .y = 0 };
     battery = 0;
-    encoders = 0;
+    total_encoders = 0;
 
     // Block until a packet is available
     while (hs.available() < 1) {
@@ -49,12 +50,13 @@ void servoAngle(float angle)
     hs.write(buf, sizeof(buf));
 }
 
+int last_encoders = 0;
 // Returns the difference in encoders since last called
 int getEncoders()
 {
-    int enc = encoders;
-    encoders = 0;
-    return enc;
+    int diff = total_encoders - last_encoders;
+    last_encoders = total_encoders;
+    return diff;
 }
 
 #define BATTERY_CONVERSION 390.0f
@@ -68,7 +70,7 @@ void parseBattery()
 void parseEncoders()
 {
     uint8_t enc = hs.read();
-    encoders += enc;
+    total_encoders += enc;
 }
 
 void parseBlocks()
