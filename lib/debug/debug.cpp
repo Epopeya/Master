@@ -1,5 +1,10 @@
-#include "vector.h"
+#include <vector.h>
+#ifdef ARDUINO
 #include <Arduino.h>
+#else
+#include "../../test/simulator.h"
+#include <stdarg.h>
+#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,12 +20,19 @@ typedef enum {
     MapFlip
 } DebugHeader;
 
+#ifdef ARDUINO
 HardwareSerial hs_debug(0);
+#else
+HardwareSerial hs_debug;
+#endif
 
 void debug_init()
 {
+#ifdef ARDUINO
     hs_debug.begin(112500, SERIAL_8N1, 23, 19);
-    // while (hs_debug.available() < 1) {}
+#else
+    hs_debug.begin();
+#endif
 }
 
 void debug_msg(const char* format, ...)
