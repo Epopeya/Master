@@ -1,25 +1,31 @@
 #ifndef NAVIGATION_H
 #define NAVIGATION_H
 #include "vector.h"
-class Navigation {
+
+#define ERROR_COEFICENT 0.005f
+#define ANGLE_CONSTRAINT PI / 3
+
+class Axis {
 public:
-    Navigation(float error_coefficient, float angle_limit, float min_after_distance, float block_offset);
-    void update(vector2_t* position, bool green_block, bool red_block);
-    float angle;
-    // Should only be used when orientation isn't known
-    float angleToAxis(float from, float to);
-    int turn_count = 0;
-    int orientation = 0; // Whether we are turning clockwise or counterclockwise
+    Axis(vector2_t pos, int turn, int counter_clockwise, float target);
 
-private:
-    float cameraOffset(vector2_t* position, int zone, bool green_block, bool red_block);
-    float camera_offset;
-    float ERROR_COEFFICIENT;
-    float ANGLE_LIMIT;
-    float MIN_AFTER_DISTANCE;
-    float BLOCK_OFFSET;
-    int last_zone;
-    float last_block;
+    // returns the target angle needed to follow the line
+    float follow(vector2_t pos);
+    float distanceTraveled(vector2_t pos);
+    bool finished(vector2_t pos);
+
+    void resetDistanceTraveled(vector2_t pos);
+    void setEnd(vector2_t pos);
+
+    void print();
+
+    int turn = 0; // most of the other vars come from turn
+    int counter_clockwise;
+    bool follow_y = false;
+    int dir = 1;
+    float angle_offset = 0;
+    float target = 0;
+    float start_pos = 0;
+    float end_pos = 0;
 };
-
 #endif

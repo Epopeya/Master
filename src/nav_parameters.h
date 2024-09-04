@@ -1,5 +1,7 @@
 #include <math.h>
-const static float ERROR_COEFFICENT = 0.005;
-const static float ANGLE_CONSTRAINT = M_PI / 2.0;
-const static float BLOCK_FIXED_OFFSET = 300.0;
-const static float MIN_AFTER_DISTANCE = 1000.0;
+const static float BLOCK_FIXED_OFFSET = 150.0;
+const static float BLOCK_AFTER_DISTANCE = 700.0;
+const static float TURN_TRIGGER_DISTANCE = 1500.0;
+const static float TURN_TIMEOUT_DISTANCE = 1500.0;
+const static float FAILSAFE_TRIGGER_DISTANCE = 100.0;
+const static float FAILSAFE_CORRECTION_FACTOR = 1.3;

@@ -8,77 +8,72 @@
 #include <debug.h>
 #include <math.h>
 
-Navigation::Navigation(float error_coefficient, float angle_limit, float min_after_distance, float block_offset)
-    : ERROR_COEFFICIENT(error_coefficient)
-    , ANGLE_LIMIT(angle_limit)
-    , MIN_AFTER_DISTANCE(min_after_distance)
-    , BLOCK_OFFSET(block_offset)
+int sign(float x)
 {
+    return x / abs(x);
 }
 
-float Navigation::angleToAxis(float from, float to)
+Axis::Axis(vector2_t pos, int _turn, int _counter_clockwise, float _target)
+    : turn(_turn)
+    , counter_clockwise(_counter_clockwise)
+    , follow_y(!(_turn % 2))
+    // this represents the sign that you would need to add to move to the right
+	// could also be represented by the sign of the positions movement direction coodinate with an inverted y axis
+    , dir(sign(cos(_turn * (PI / 2.0) + (PI / 4.0) - ((PI / 2) * (counter_clockwise == 1 ? 0 : 1)))))
+    , angle_offset(turn * (PI / 2) * counter_clockwise)
+    , start_pos(follow_y ? pos.x : pos.y)
+    , target(_target)
 {
-    float angle = (to - from) * ERROR_COEFFICIENT;
-    return constrain(angle, -ANGLE_LIMIT, ANGLE_LIMIT);
+    print();
 }
 
-float Navigation::cameraOffset(vector2_t* position, int zone, bool green_block, bool red_block)
+void Axis::print()
 {
-    float pos = (turn_count % 2) ? position->y : position->x;
-    if (green_block && camera_offset == 0) {
-        if (camera_offset == 0) {
-            debug_msg("green block");
-        }
-        last_block = pos;
-        return BLOCK_OFFSET; // left
-    } else if (red_block && camera_offset == 0) {
-        if (camera_offset == 0) {
-            debug_msg("red block");
-        }
-        last_block = pos;
-        return -BLOCK_OFFSET; // right
-    }
-
-    if (abs(last_block - pos) > MIN_AFTER_DISTANCE) {
-        return 0;
-    }
-    return camera_offset;
+    debug_msg("Axis -> follow_y: %i, turn: %i, sign: %i, angle_offset: %f, target: %f, end_pos: %f", follow_y, turn,
+        dir, angle_offset, target, end_pos);
 }
 
-void Navigation::update(vector2_t* position, bool green_block, bool red_block)
+float Axis::follow(vector2_t pos)
 {
-    float to = 0;
-    float sign = 0;
-    int zone;
+    float follow_pos = follow_y ? pos.y : pos.x;
+    float angle = (target - follow_pos) * ERROR_COEFICENT;
 
-    if (position->y < 500 && position->y > -500 && position->x < 500) {
-        to = 0;
-        sign = 1;
-        zone = 0;
-    } else if (position->x > 500 && position->y < 1500 && position->y > -1500) {
-        to = 1000;
-        sign = -1 * orientation;
-        zone = 1;
-    } else if (position->x > -500 && (position->y > 1500 || position->y < -1500)) {
-        to = 2000 * orientation;
-        sign = -1;
-        zone = 2;
-    } else if (position->x < -500 && (position->y > 500 || position->y < -500)) {
-        to = -1000;
-        sign = 1 * orientation;
-        zone = 3;
+    angle *= dir; // this only changes the sign
+    angle = constrain(angle, -ANGLE_CONSTRAINT, ANGLE_CONSTRAINT);
+    angle += angle_offset;
+
+    return angle;
+}
+
+float Axis::distanceTraveled(vector2_t pos)
+{
+    return abs(start_pos - (follow_y ? pos.x : pos.y));
+}
+
+bool Axis::finished(vector2_t pos)
+{
+    int mod_turn = turn % 4;
+    float check_pos = follow_y ? pos.x : pos.y;
+
+	// checks if we have advanced past the end point, any better way?
+    if (mod_turn == 0) {
+        return check_pos > end_pos;
+    } else if (mod_turn == 1) {
+        return (counter_clockwise > 0) ? check_pos > end_pos : check_pos < end_pos;
+    } else if (mod_turn == 2) {
+        return check_pos < end_pos;
+    } else if (mod_turn == 3) {
+        return (counter_clockwise > 0) ? check_pos < end_pos : check_pos > end_pos;
     }
+    return false;
+}
 
-    camera_offset = cameraOffset(position, zone, green_block, red_block);
-    to += camera_offset * sign;
+void Axis::resetDistanceTraveled(vector2_t pos)
+{
+    start_pos = follow_y ? pos.x : pos.y;
+}
 
-    if (zone != last_zone) {
-        turn_count += orientation;
-        camera_offset = 0;
-        debug_msg("zone change to turn: %i 🦔", turn_count);
-    }
-
-    float from = (turn_count % 2) ? position->x : position->y;
-    angle = turn_count * (M_PI / 2) + (angleToAxis(from, to) * sign);
-    last_zone = zone;
+void Axis::setEnd(vector2_t pos)
+{
+    end_pos = follow_y ? pos.x : pos.y;
 }
