@@ -67,12 +67,12 @@ vector2_t lidarInitialPosition()
 
             if (!(distance < 10.0 || distance > 3000.0)) {
                 if (angle < 5 || angle > 355) {
-                    debug_msg("posX: %f", distance);
+                    debug_msg("frnt dist: %f", distance);
                     counter.x++;
                     start_distances.x += distance;
                 }
                 if (angle < 275 && angle > 265) {
-                    debug_msg("posY: %f", distance);
+                    debug_msg("left dist: %f", distance);
                     counter.y++;
                     start_distances.y += distance;
                 }

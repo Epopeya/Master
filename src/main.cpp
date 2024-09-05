@@ -12,7 +12,7 @@
 #include <timer.h>
 #include <vector>
 
-PID servoPid(1.3f, 0.08f, 0.15f);
+PID servoPid(5.3f, 0.08f, 0.15f);
 Imu imu;
 Timer nav_timer(20);
 
@@ -110,14 +110,26 @@ void loop()
         }
         case NavState::TurnEnd: {
 
-            turn_count++;
+            debug_msg("ending turn on x: %f, y: %f, turn: %i", position.x, position.y, turn_count);
+
             // are we facing a positive or negative direction? TODO: use axis angle or smnt
-            float forward_sign = sign(turn_count % 2 ? cos(imu.rotation) : sin(imu.rotation));
-            turn_center = turn_count % 2 ? position.x : position.y;
+            float forward_sign = 0.0f;
+            if (counter_clock > 0) {
+                float values[] = { 1, 1, -1, -1 };
+                forward_sign = values[turn_count % 4];
+            } else {
+                float values[] = { 1, -1, -1, 1 };
+                forward_sign = values[turn_count % 4];
+            }
+            //  forward_sign = sign(turn_count % 2 ? sin(cur_axis.angle_offset) : cos(cur_axis.angle_offset));
+            turn_center = turn_count % 2 ? position.y : position.x;
 
             turn_center = (turn_center + (turn_center + forward_sign * front_distance)) / 2.;
-            /* turn_center = (turn_center + forward_sign * 250); */
+            // turn_center = (turn_center + forward_sign * 500.);
 
+            debug_msg("turn_pos: %f, forward_sign: %f, turn_centr: %f", turn_count % 2 ? position.x : position.y, forward_sign, turn_center);
+
+            turn_count++;
             cur_axis.setEnd(position);
             path.push_back(cur_axis);
             cur_axis = Axis(position, turn_count, counter_clock, turn_center);
@@ -130,7 +142,6 @@ void loop()
             if (turn_count == 5) {
                 current_state = NavState::PathCalc;
             }
-            debug_msg("ending turn on x: %f, y: %f", position.x, position.y);
 
             break;
         }
@@ -200,7 +211,7 @@ void setup()
     if (battery > 4) {
         lidarSetup();
         vector2_t start_distances = lidarInitialPosition();
-        position.x = 1500 - start_distances.x;
+        position.x = 1500 - start_distances.x - 150; // for lidar offset
         position.y = 500 - start_distances.y;
         start_distance_y = start_distances.y;
         lidarStart();
@@ -224,4 +235,6 @@ void setup()
 
     // to correctly turn on the first curve
     last_pos.x -= 1000;
+
+    cur_axis = Axis(position, 0, 0, position.y);
 }

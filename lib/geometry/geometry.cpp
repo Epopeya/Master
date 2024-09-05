@@ -16,4 +16,4 @@ vector2_t addVectors(vector2_t v1, vector2_t v2)
     return { .x = v1.x + v2.x, .y = v1.y + v2.y };
 }
 
-int sign(int x) { return (x > 0) - (x < 0); }
+int sign(int x) { return x / abs(x); }
