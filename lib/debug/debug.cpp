@@ -2,7 +2,7 @@
 #ifdef ARDUINO
 #include <Arduino.h>
 #else
-#include "../../test/simulator.h"
+#include "../../test/serial.h"
 #include <stdarg.h>
 #endif
 #include <stdint.h>

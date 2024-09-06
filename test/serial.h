@@ -1,5 +1,4 @@
-#ifndef TEST_SERIAL_H
-#define TEST_SERIAL_H
+#pragma once
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -26,4 +25,3 @@ public:
 private:
     FILE* output;
 };
-#endif
