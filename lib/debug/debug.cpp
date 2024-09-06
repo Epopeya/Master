@@ -65,14 +65,14 @@ void debug_battery(float voltage)
     hs_debug.write((uint8_t*)&voltage, sizeof(float));
 }
 
-void debug_position(vector2_t pos)
+void debug_position(Vector pos)
 {
     hs_debug.write(Position);
     hs_debug.write((uint8_t*)&pos.x, sizeof(float));
     hs_debug.write((uint8_t*)&pos.y, sizeof(float));
 }
 
-void debug_waypoints(vector2_t waypoints[], size_t waypoints_len)
+void debug_waypoints(Vector waypoints[], size_t waypoints_len)
 {
     hs_debug.write(Route);
     hs_debug.write((uint8_t)waypoints_len);
@@ -82,7 +82,7 @@ void debug_waypoints(vector2_t waypoints[], size_t waypoints_len)
     }
 }
 
-void debug_lidar(vector2_t pos)
+void debug_lidar(Vector pos)
 {
     hs_debug.write(Lidar);
     hs_debug.write((uint8_t*)&pos.x, sizeof(float));

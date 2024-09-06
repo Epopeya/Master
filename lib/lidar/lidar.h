@@ -3,5 +3,5 @@
 
 extern float front_distance, right_distance, left_distance;
 void lidarSetup();
-vector2_t lidarInitialPosition();
+Vector lidarInitialPosition();
 void lidarStart();

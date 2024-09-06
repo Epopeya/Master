@@ -1,4 +1,5 @@
 #include "lidar.h"
+#include "vector.h"
 #include <RPLidar.h>
 #include <debug.h>
 #include <imu.h>
@@ -55,11 +56,12 @@ void lidarSetup()
 }
 
 #define MEDIAN_ROUNDS 100
-vector2_t lidarInitialPosition()
+Vector lidarInitialPosition()
 {
-    vector2_integer_t counter = { .x = 0, .y = 0 };
-    vector2_t start_distances = { .x = 0, .y = 0 };
-    while (counter.x < MEDIAN_ROUNDS || counter.y < MEDIAN_ROUNDS) {
+    int counter_x = 0;
+    int counter_y = 0;
+    Vector start_distances = Vector();
+    while (counter_x < MEDIAN_ROUNDS || counter_y < MEDIAN_ROUNDS) {
         if (IS_OK(lidar.waitPoint())) {
             RPLidarMeasurement point = lidar.getCurrentPoint();
             float distance = point.distance; // distance value in mm unit
@@ -67,20 +69,20 @@ vector2_t lidarInitialPosition()
 
             if (!(distance < 10.0 || distance > 3000.0)) {
                 if (angle < 5 || angle > 355) {
-                    debug_msg("frnt dist: %f", distance);
-                    counter.x++;
+                    debug_msg("posX: %f", distance);
+                    counter_x++;
                     start_distances.x += distance;
                 }
                 if (angle < 275 && angle > 265) {
-                    debug_msg("left dist: %f", distance);
-                    counter.y++;
+                    debug_msg("posY: %f", distance);
+                    counter_y++;
                     start_distances.y += distance;
                 }
             }
         }
     }
-    start_distances.x /= counter.x;
-    start_distances.y /= counter.y;
+    start_distances.x /= counter_x;
+    start_distances.y /= counter_y;
 
     return start_distances;
 }

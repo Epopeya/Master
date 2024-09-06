@@ -7,15 +7,15 @@
 
 class Axis {
 public:
-    Axis(vector2_t pos, int turn, int counter_clockwise, float target);
+    Axis(Vector pos, int turn, int counter_clockwise, float target);
 
     // returns the target angle needed to follow the line
-    float follow(vector2_t pos);
-    float distanceTraveled(vector2_t pos);
-    bool finished(vector2_t pos);
+    float follow(Vector pos);
+    float distanceTraveled(Vector pos);
+    bool finished(Vector pos);
 
-    void resetDistanceTraveled(vector2_t pos);
-    void setEnd(vector2_t pos);
+    void resetDistanceTraveled(Vector pos);
+    void setEnd(Vector pos);
 
     void print();
 

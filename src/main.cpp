@@ -1,8 +1,6 @@
 #include "nav_parameters.h"
-#include "vector.h"
 #include <Arduino.h>
 #include <debug.h>
-#include <geometry.h>
 #include <imu.h>
 #include <lidar.h>
 #include <math.h>
@@ -10,6 +8,7 @@
 #include <pid.h>
 #include <slave.h>
 #include <timer.h>
+#include <vector.h>
 #include <vector>
 
 PID servoPid(5.3f, 0.08f, 0.15f);
@@ -17,8 +16,8 @@ Imu imu;
 Timer nav_timer(20);
 
 #define ENCODERS_TO_MM 1.6f
-vector2_t position = { .x = 0, .y = 0 };
-void updatePosition(vector2_t* pos, float angle, int encoders)
+Vector position = Vector();
+void updatePosition(Vector* pos, float angle, int encoders)
 {
     pos->x += encoders * cos(angle) * ENCODERS_TO_MM;
     pos->y += encoders * sin(angle) * ENCODERS_TO_MM;
@@ -38,7 +37,7 @@ NavState current_state = NavState::LidarFollow;
 int turn_count = 0;
 int counter_clock = 1; // -1 for clockwise
 float turn_center = 0; // middle of the walls for the current turn
-vector2_t last_pos;
+Vector last_pos;
 
 // path following vars
 int axisIndex = 0;
@@ -210,7 +209,7 @@ void setup()
 
     if (battery > 4) {
         lidarSetup();
-        vector2_t start_distances = lidarInitialPosition();
+        Vector start_distances = lidarInitialPosition();
         position.x = 1500 - start_distances.x - 150; // for lidar offset
         position.y = 500 - start_distances.y;
         start_distance_y = start_distances.y;

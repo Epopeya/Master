@@ -6,19 +6,18 @@
 #include "../../test/simulator.h"
 #endif
 #include <debug.h>
-#include <math.h>
 
 int sign(float x)
 {
     return x / abs(x);
 }
 
-Axis::Axis(vector2_t pos, int _turn, int _counter_clockwise, float _target)
+Axis::Axis(Vector pos, int _turn, int _counter_clockwise, float _target)
     : turn(_turn)
     , counter_clockwise(_counter_clockwise)
     , follow_y(!(_turn % 2))
     // this represents the sign that you would need to add to move to the right
-	// could also be represented by the sign of the positions movement direction coodinate with an inverted y axis
+    // could also be represented by the sign of the positions movement direction coodinate with an inverted y axis
     , dir(sign(cos(_turn * (PI / 2.0) + (PI / 4.0) - ((PI / 2) * (counter_clockwise == 1 ? 0 : 1)))))
     , angle_offset(turn * (PI / 2) * counter_clockwise)
     , start_pos(follow_y ? pos.x : pos.y)
@@ -33,7 +32,7 @@ void Axis::print()
         dir, angle_offset, target, end_pos);
 }
 
-float Axis::follow(vector2_t pos)
+float Axis::follow(Vector pos)
 {
     float follow_pos = follow_y ? pos.y : pos.x;
     float angle = (target - follow_pos) * ERROR_COEFICENT;
@@ -45,17 +44,17 @@ float Axis::follow(vector2_t pos)
     return angle;
 }
 
-float Axis::distanceTraveled(vector2_t pos)
+float Axis::distanceTraveled(Vector pos)
 {
     return abs(start_pos - (follow_y ? pos.x : pos.y));
 }
 
-bool Axis::finished(vector2_t pos)
+bool Axis::finished(Vector pos)
 {
     int mod_turn = turn % 4;
     float check_pos = follow_y ? pos.x : pos.y;
 
-	// checks if we have advanced past the end point, any better way?
+    // checks if we have advanced past the end point, any better way?
     if (mod_turn == 0) {
         return check_pos > end_pos;
     } else if (mod_turn == 1) {
@@ -68,12 +67,12 @@ bool Axis::finished(vector2_t pos)
     return false;
 }
 
-void Axis::resetDistanceTraveled(vector2_t pos)
+void Axis::resetDistanceTraveled(Vector pos)
 {
     start_pos = follow_y ? pos.x : pos.y;
 }
 
-void Axis::setEnd(vector2_t pos)
+void Axis::setEnd(Vector pos)
 {
     end_pos = follow_y ? pos.x : pos.y;
 }
