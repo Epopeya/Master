@@ -12,24 +12,24 @@ int sign(float x)
     return x / abs(x);
 }
 
-Axis::Axis(Vector pos, int _turn, int _counter_clockwise, float _target)
+Axis::Axis(Vector pos, int _turn, int _counter_clockwise, float _target, float _end)
     : turn(_turn)
     , counter_clockwise(_counter_clockwise)
     , follow_y(!(_turn % 2))
     // this represents the sign that you would need to add to move to the right
     // could also be represented by the sign of the positions movement direction coodinate with an inverted y axis
     , dir(sign(cos(_turn * (PI / 2.0) + (PI / 4.0) - ((PI / 2) * (counter_clockwise == 1 ? 0 : 1)))))
-    , angle_offset(turn * (PI / 2) * counter_clockwise)
     , start_pos(follow_y ? pos.x : pos.y)
     , target(_target)
+    , end_pos(_end)
 {
     print();
 }
 
 void Axis::print()
 {
-    debug_msg("Axis -> follow_y: %i, turn: %i, sign: %i, angle_offset: %f, target: %f, end_pos: %f", follow_y, turn,
-        dir, angle_offset, target, end_pos);
+    debug_msg("Axis -> follow_y: %i, turn: %i, sign: %i, target: %f, end_pos: %f", follow_y, turn,
+        dir, target, end_pos);
 }
 
 float Axis::follow(Vector pos)
@@ -39,7 +39,6 @@ float Axis::follow(Vector pos)
 
     angle *= dir; // this only changes the sign
     angle = constrain(angle, -ANGLE_CONSTRAINT, ANGLE_CONSTRAINT);
-    angle += angle_offset;
 
     return angle;
 }

@@ -7,7 +7,7 @@
 
 class Axis {
 public:
-    Axis(Vector pos, int turn, int counter_clockwise, float target);
+    Axis(Vector pos, int turn, int counter_clockwise, float target, float _end = 0.0f);
 
     // returns the target angle needed to follow the line
     float follow(Vector pos);
@@ -23,7 +23,6 @@ public:
     int counter_clockwise;
     bool follow_y = false;
     int dir = 1;
-    float angle_offset = 0;
     float target = 0;
     float start_pos = 0;
     float end_pos = 0;
