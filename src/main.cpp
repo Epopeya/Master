@@ -35,7 +35,9 @@ enum NavState {
     PathFollow, // follow the path
     RoundEnd,
     SquareStart,
-    SquareNav
+    SquareCheck,
+    SquareDoubleCheck,
+    SquareEnd
 };
 
 // nav state
@@ -44,6 +46,8 @@ Axis cur_axis(position, 0, 0, 0);
 NavState current_state = NavState::LidarStart;
 #else
 NavState current_state = NavState::SquareStart;
+std::vector<float> initial_distances;
+unsigned long stop_until = 0;
 #endif
 int turn_count = 0;
 int counter_clock = 1; // -1 for clockwise
@@ -217,7 +221,95 @@ void loop()
             break;
         }
         case NavState::SquareStart: {
-
+            cur_axis = Axis(position, 0, 1, 0, 550);
+            current_state = NavState::SquareCheck;
+            break;
+        }
+        case NavState::SquareCheck: {
+            if (cur_axis.finished(position) && stop_until == 0) {
+                motorSpeed(0);
+                stop_until = millis() + 1500;
+            }
+            if (stop_until != 0 && stop_until < millis()) {
+                stop_until = 0;
+                switch (turn_count) {
+                case 0: {
+                    if (left_distance > 1500) {
+                        turn_count++;
+                        cur_axis = Axis(position, turn_count, 1, 1500, 1550);
+                        counter_clock = 1;
+                        if (initial_distances[0] + initial_distances[1] > 900) {
+                            path.push_back(Axis(position, 0, counter_clock, 0, 500));
+                            // TODO: Could be more precise with left and right measurings
+                            // same applies to all other cases
+                            position.y = position.y + (500 - initial_distances[0]);
+                        } else {
+                            path.push_back(Axis(position, 0, counter_clock, -250, 500));
+                            position.y = position.y + (250 - initial_distances[0]);
+                        }
+                    } else if (right_distance > 1500) {
+                        turn_count++;
+                        cur_axis = Axis(position, turn_count, -1, 1500, -1550);
+                        counter_clock = -1;
+                        if (initial_distances[0] + initial_distances[1] > 900) {
+                            path.push_back(Axis(position, 0, counter_clock, 0, 500));
+                            position.y = position.y + (500 - initial_distances[0]);
+                        } else {
+                            path.push_back(Axis(position, 0, counter_clock, 250, 500));
+                            position.y = position.y + (250 + initial_distances[1]);
+                        }
+                    } else {
+                        cur_axis = Axis(position, 0, 1, 0, 800);
+                        current_state = NavState::SquareDoubleCheck;
+                    }
+                    break;
+                }
+                case 1: {
+                    turn_count++;
+                    if (left_distance > 1500) {
+                        cur_axis = Axis(position, turn_count, 1, 1500);
+                    } else if (right_distance > 1500) {
+                        cur_axis = Axis(position, turn_count, -1, -1500);
+                    }
+                    break;
+                }
+                }
+            }
+            break;
+        }
+        case NavState::SquareDoubleCheck: {
+            if (cur_axis.finished(position)) {
+                motorSpeed(0);
+                stop_until = millis() + 1500;
+            }
+            if (stop_until != 0 && stop_until < millis()) {
+                stop_until = 0;
+                turn_count++;
+                if (left_distance > 1500) {
+                    counter_clock = 1;
+                    if (initial_distances[0] + initial_distances[1] > 900) {
+                        path.push_back(Axis(position, 0, counter_clock, 0, 500));
+                        position.y = position.y + (500 - initial_distances[0]);
+                    } else {
+                        path.push_back(Axis(position, 0, counter_clock, 250, 500));
+                        position.y = position.y + (250 - initial_distances[0]);
+                    }
+                } else if (right_distance > 1500) {
+                    counter_clock = -1;
+                    if (initial_distances[0] + initial_distances[1] > 900) {
+                        path.push_back(Axis(position, 0, counter_clock, 0, 500));
+                        position.y = position.y + (500 - initial_distances[0]);
+                    } else {
+                        path.push_back(Axis(position, 0, counter_clock, 250, 500));
+                        position.y = position.y + (250 + initial_distances[1]);
+                    }
+                } else {
+                    motorSpeed(0);
+                    debug_msg("🤯");
+                }
+                cur_axis = Axis(position, turn_count, counter_clock, 1500, 1550 * counter_clock);
+                current_state = NavState::SquareCheck;
+            }
             break;
         }
         }
@@ -250,6 +342,7 @@ void setup()
         auto distances = lidarInitialDistances();
         position.y = 500 - distances[0];
         position.x = 1500 - distances[2] - 150;
+        initial_distances = distances;
         lidarStart();
     }
     debug_msg("Setup completed");
