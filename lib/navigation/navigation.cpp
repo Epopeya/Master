@@ -19,9 +19,10 @@ Axis::Axis(Vector pos, int _turn, int _counter_clockwise, float _target, float _
     // this represents the sign that you would need to add to move to the right
     // could also be represented by the sign of the positions movement direction coodinate with an inverted y axis
     , dir(sign(cos(_turn * (PI / 2.0) + (PI / 4.0) - ((PI / 2) * (counter_clockwise == 1 ? 0 : 1)))))
+    , distance_pos(follow_y ? pos.x : pos.y)
     , start_pos(follow_y ? pos.x : pos.y)
-    , target(_target)
     , end_pos(_end)
+    , target(_target)
 {
     print();
 }
@@ -45,7 +46,7 @@ float Axis::follow(Vector pos)
 
 float Axis::distanceTraveled(Vector pos)
 {
-    return abs(start_pos - (follow_y ? pos.x : pos.y));
+    return abs(distance_pos - (follow_y ? pos.x : pos.y));
 }
 
 bool Axis::finished(Vector pos)
@@ -68,10 +69,19 @@ bool Axis::finished(Vector pos)
 
 void Axis::resetDistanceTraveled(Vector pos)
 {
-    start_pos = follow_y ? pos.x : pos.y;
+    distance_pos = follow_y ? pos.x : pos.y;
 }
 
 void Axis::setEnd(Vector pos)
 {
     end_pos = follow_y ? pos.x : pos.y;
+}
+
+void Axis::reverse(int _counter_clockwise)
+{
+    counter_clockwise = _counter_clockwise;
+    dir = sign(cos(turn * (PI / 2.0) + (PI / 4.0) - ((PI / 2) * (counter_clockwise == 1 ? 0 : 1))));
+    float swap = end_pos;
+    end_pos = start_pos;
+    start_pos = swap;
 }

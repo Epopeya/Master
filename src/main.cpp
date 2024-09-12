@@ -47,12 +47,27 @@ NavState current_state = NavState::SquareStart;
 int turn_count = 0;
 int counter_clock = 1; // -1 for clockwise
 
+const std::vector<Axis> counterClockAxes = {
+    Axis(position, 0, 1, 0, 500),
+    Axis(position, 1, 1, 1000, 1500),
+    Axis(position, 2, 1, 2000, -500),
+    Axis(position, 3, 1, -1000, 500),
+};
+
+const std::vector<Axis> clockAxes = {
+    Axis(position, 0, -1, 0, 500),
+    Axis(position, 1, -1, 1000, -1500),
+    Axis(position, 2, -1, -2000, -500),
+    Axis(position, 3, -1, -1000, -500),
+};
+
 // path following vars
 int axisIndex = 0;
 std::vector<Axis> centerAxes;
 std::vector<Axis> path;
 
 // blocks
+bool lastBlockRed = 0; // true fir red, false for true
 bool redSeen = false; // if a red block is on the current turn
 bool greenSeen = false; // same for green
 
@@ -73,24 +88,14 @@ void loop()
             if (left_distance > TURN_TRIGGER_DISTANCE) {
                 debug_msg("locking in left turns");
                 counter_clock = 1;
-                centerAxes = {
-                    Axis(position, 0, 1, 0, 500),
-                    Axis(position, 1, 1, 1000, 1500),
-                    Axis(position, 2, 1, 2000, -500),
-                    Axis(position, 3, 1, -1000, 500),
-                };
+                centerAxes = counterClockAxes;
                 current_state = NavState::BlockSearch;
             }
             // right turn
             else if (right_distance > TURN_TRIGGER_DISTANCE) {
                 debug_msg("locking in right turns");
                 counter_clock = -1;
-                centerAxes = {
-                    Axis(position, 0, -1, 0, 500),
-                    Axis(position, 1, -1, 1000, -1500),
-                    Axis(position, 2, -1, -2000, -500),
-                    Axis(position, 3, -1, -1000, -500),
-                };
+                centerAxes = clockAxes;
                 current_state = NavState::BlockSearch;
             }
             break;
@@ -100,6 +105,7 @@ void loop()
 
             if (red_block.in_scene || green_block.in_scene) {
                 cur_axis.resetDistanceTraveled(position);
+                lastBlockRed = red_block.in_scene;
             }
 
             if (not redSeen && red_block.in_scene) {
@@ -151,6 +157,16 @@ void loop()
 
             current_state = NavState::BlockSearch;
 
+            // we need to reverse everything
+            if (turn_count == 8 && lastBlockRed) {
+                debug_msg("Reached last round turn, and last block was red, turning around");
+                counter_clock *= -1;
+                if (counter_clock == 1) {
+                    centerAxes = counterClockAxes;
+                } else {
+                    centerAxes = clockAxes;
+                }
+            }
             // if (turn_count == 5) {
             //     current_state = NavState::PathCalc;
             // }
@@ -158,6 +174,7 @@ void loop()
             break;
         }
         case NavState::PathCalc: {
+            debug_msg("calculating path to follow, starting with axis:");
             // delete all data from the first stretch, we get it from the second pass
             while (path[0].turn == 0) {
                 path.erase(path.begin());
@@ -170,10 +187,15 @@ void loop()
         }
         case NavState::PathFollow: {
             if (cur_axis.finished(position)) {
+                int prev_follow_y = path.at(axisIndex).follow_y;
                 axisIndex = (axisIndex + 1) % path.size();
 
                 cur_axis.print();
                 cur_axis = path.at(axisIndex);
+                if (prev_follow_y != cur_axis.follow_y) {
+                    debug_msg("Axis changed y follow, increasing turn count...");
+                    turn_count++;
+                }
             }
 
             break;

@@ -17,6 +17,8 @@ public:
     void resetDistanceTraveled(Vector pos);
     void setEnd(Vector pos);
 
+    void reverse(int _counter_clockwise);
+
     void print();
 
     int turn = 0; // most of the other vars come from turn
@@ -24,6 +26,7 @@ public:
     bool follow_y = false;
     int dir = 1;
     float target = 0;
+    float distance_pos = 0; // used only for distance
     float start_pos = 0;
     float end_pos = 0;
 };
