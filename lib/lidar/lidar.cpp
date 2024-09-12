@@ -56,12 +56,15 @@ void lidarSetup()
 }
 
 #define MEDIAN_ROUNDS 100
-Vector lidarInitialPosition()
+std::vector<float> lidarInitialDistances()
 {
-    int counter_x = 0;
-    int counter_y = 0;
-    Vector start_distances = Vector();
-    while (counter_x < MEDIAN_ROUNDS || counter_y < MEDIAN_ROUNDS) {
+    int counter_left = 0;
+    int counter_right = 0;
+    int counter_front = 0;
+    float dist_left = 0;
+    float dist_right = 0;
+    float dist_front = 0;
+    while (counter_front < MEDIAN_ROUNDS || counter_left < MEDIAN_ROUNDS || counter_right < MEDIAN_ROUNDS) {
         if (IS_OK(lidar.waitPoint())) {
             RPLidarMeasurement point = lidar.getCurrentPoint();
             float distance = point.distance; // distance value in mm unit
@@ -69,22 +72,30 @@ Vector lidarInitialPosition()
 
             if (!(distance < 10.0 || distance > 3000.0)) {
                 if (angle < 5 || angle > 355) {
-                    debug_msg("posX: %f", distance);
-                    counter_x++;
-                    start_distances.x += distance;
+                    debug_msg("front: %f", distance);
+                    counter_front++;
+                    dist_front += distance;
+                }
+                if (angle < 95 && angle > 85) {
+                    debug_msg("left: %f", distance);
+                    counter_left++;
+                    dist_left += distance;
                 }
                 if (angle < 275 && angle > 265) {
-                    debug_msg("posY: %f", distance);
-                    counter_y++;
-                    start_distances.y += distance;
+                    debug_msg("right: %f", distance);
+                    counter_right++;
+                    dist_right += distance;
                 }
             }
         }
     }
-    start_distances.x /= counter_x;
-    start_distances.y /= counter_y;
 
-    return start_distances;
+    std::vector<float> ret(3);
+
+    ret[0] = dist_left / counter_left;
+    ret[1] = dist_right / counter_right;
+    ret[2] = dist_front / counter_front;
+    return ret;
 }
 
 void lidarStart()

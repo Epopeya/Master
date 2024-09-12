@@ -11,6 +11,8 @@
 #include <vector.h>
 #include <vector>
 
+// #define BLOCK_MODE
+
 PID servoPid(4.3f, 0.16f, 0.25f);
 Imu imu;
 Timer nav_timer(20);
@@ -31,11 +33,17 @@ enum NavState {
     PathCalc, // calculate the path
     PathFollow, // follow the path
     RoundEnd,
+    SquareStart,
+    SquareNav
 };
 
 // nav state
 Axis cur_axis(position, 0, 0, 0);
+#ifdef BLOCK_MODE
 NavState current_state = NavState::LidarStart;
+#else
+NavState current_state = NavState::SquareStart;
+#endif
 int turn_count = 0;
 int counter_clock = 1; // -1 for clockwise
 
@@ -87,7 +95,7 @@ void loop()
             }
             break;
         }
-        case NavState::BlockSearch: { 
+        case NavState::BlockSearch: {
             Axis center_axis = centerAxes[turn_count % 4];
 
             if (red_block.in_scene || green_block.in_scene) {
@@ -114,9 +122,8 @@ void loop()
                 redSeen = false;
                 greenSeen = false;
                 cur_axis = center_axis;
-                
-            }
-            else if (not greenSeen && not redSeen) {
+
+            } else if (not greenSeen && not redSeen) {
                 cur_axis = center_axis;
             }
 
@@ -143,7 +150,6 @@ void loop()
             greenSeen = false;
 
             current_state = NavState::BlockSearch;
-
 
             // if (turn_count == 5) {
             //     current_state = NavState::PathCalc;
@@ -172,19 +178,14 @@ void loop()
 
             break;
         }
+        case NavState::SquareStart: {
+
+            break;
+        }
         }
 
         // follow the axis
         float target_angle = cur_axis.follow(position) + (turn_count * (PI / 2) * counter_clock);
-
-        // wall failsafe, maybe too much...
-        // if (left_distance < FAILSAFE_TRIGGER_DISTANCE) {
-        //     debug_msg("Getting too close to left, moving away...");
-        //     target_angle -= FAILSAFE_CORRECTION_FACTOR;
-        // } else if (right_distance < FAILSAFE_TRIGGER_DISTANCE) {
-        //     debug_msg("Getting too close to right, moving away...");
-        //     target_angle += FAILSAFE_CORRECTION_FACTOR;
-        // }
 
         servoPid.target = target_angle;
         debug_target_direction(servoPid.target);
@@ -208,9 +209,8 @@ void setup()
 
     if (battery > 4) {
         lidarSetup();
-        Vector start_distances = lidarInitialPosition();
-        position.x = 1500 - start_distances.x - 150; // for lidar offset
-        position.y = 500 - start_distances.y;
+        auto distances = lidarInitialDistances();
+        position.x = 1500 - distances[2] - 150;
         lidarStart();
     }
     debug_msg("Setup completed");
