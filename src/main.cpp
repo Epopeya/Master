@@ -1,4 +1,3 @@
-#include "nav_parameters.h"
 #include <Arduino.h>
 #include <debug.h>
 #include <imu.h>
@@ -8,10 +7,11 @@
 #include <pid.h>
 #include <slave.h>
 #include <timer.h>
-#include <vector.h>
 #include <vector>
 
-// #define BLOCK_MODE
+#include "nav_parameters.h"
+
+#define BLOCK_MODE
 
 PID servoPid(4.3f, 0.16f, 0.25f);
 Imu imu;
@@ -28,8 +28,9 @@ void updatePosition(Vector* pos, float angle, int encoders)
 
 enum NavState {
     LidarStart, // navigate using lidars
-    BlockSearch,
+    BlockSearch, // navigate through the blocks and save the path
     TurnEnd, // calculations on turn end
+    TurnAround, // turn around at the end of the block fase
     PathCalc, // calculate the path
     PathFollow, // follow the path
     RoundEnd,
@@ -108,27 +109,31 @@ void loop()
                 lastBlockRed = red_block.in_scene;
             }
 
+            // if we see a block, we have to change the axis and save the prevoius one
             if (not redSeen && red_block.in_scene) {
                 debug_msg("red block seen, turn: %i, sign: %i", turn_count, -center_axis.dir);
                 redSeen = true;
                 greenSeen = false;
                 cur_axis.setEnd(position);
                 path.push_back(cur_axis);
-                cur_axis = Axis(position, turn_count, counter_clock, center_axis.target - BLOCK_FIXED_OFFSET * center_axis.dir);
-
+                cur_axis = Axis(
+                    position, turn_count, counter_clock, center_axis.target - BLOCK_FIXED_OFFSET * center_axis.dir);
             } else if (not greenSeen && green_block.in_scene) {
                 debug_msg("green block seen, turn: %i, sign: %i", turn_count, center_axis.dir);
                 redSeen = false;
                 greenSeen = true;
                 cur_axis.setEnd(position);
                 path.push_back(cur_axis);
-                cur_axis = Axis(position, turn_count, counter_clock, center_axis.target + BLOCK_FIXED_OFFSET * center_axis.dir);
+                cur_axis = Axis(
+                    position, turn_count, counter_clock, center_axis.target + BLOCK_FIXED_OFFSET * center_axis.dir);
 
+                // same thing here, we reset the axis and save the previous one
             } else if ((greenSeen || redSeen) && cur_axis.distanceTraveled(position) > BLOCK_AFTER_DISTANCE) {
                 redSeen = false;
                 greenSeen = false;
+                cur_axis.setEnd(position);
+                path.push_back(cur_axis);
                 cur_axis = center_axis;
-
             } else if (not greenSeen && not redSeen) {
                 cur_axis = center_axis;
             }
@@ -139,7 +144,6 @@ void loop()
             }
 
             if (center_axis.finished(position)) {
-                // turn_count++;
                 current_state = NavState::TurnEnd;
             }
             break;
@@ -158,18 +162,25 @@ void loop()
             current_state = NavState::BlockSearch;
 
             // we need to reverse everything
-            if (turn_count == 8 && lastBlockRed) {
-                debug_msg("Reached last round turn, and last block was red, turning around");
-                counter_clock *= -1;
-                if (counter_clock == 1) {
-                    centerAxes = counterClockAxes;
-                } else {
-                    centerAxes = clockAxes;
-                }
+            if (turn_count == 9 && lastBlockRed) {
+                current_state = NavState::TurnAround;
             }
             // if (turn_count == 5) {
             //     current_state = NavState::PathCalc;
             // }
+
+            break;
+        }
+        case NavState::TurnAround: {
+            debug_msg("Reached last round turn, and last block was red, turning around");
+
+            turn_count = 0;
+            if (counter_clock == 1) {
+                centerAxes = clockAxes;
+            } else {
+                centerAxes = counterClockAxes;
+            }
+            counter_clock *= -1;
 
             break;
         }
@@ -183,6 +194,11 @@ void loop()
             cur_axis.print();
             current_state = NavState::PathFollow;
             motorSpeed(210);
+            debug_msg("------------------- FINAL PATH ----------------------");
+            for (Axis a : path) {
+                a.print();
+            }
+            debug_msg("------------------- PATH END ------------------------");
             break;
         }
         case NavState::PathFollow: {
@@ -232,6 +248,7 @@ void setup()
     if (battery > 4) {
         lidarSetup();
         auto distances = lidarInitialDistances();
+        position.y = 500 - distances[0];
         position.x = 1500 - distances[2] - 150;
         lidarStart();
     }
