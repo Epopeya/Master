@@ -12,9 +12,9 @@
 
 #include "nav_parameters.h"
 
-// #define BLOCK_MODE
+#define BLOCK_MODE
 
-PID servoPid(4.3f, 0.16f, 0.25f);
+PID servoPid(5.3f, 0.76f, 0.35f);
 Imu imu;
 Timer nav_timer(20);
 
@@ -31,32 +31,42 @@ enum NavState {
     LidarStart, // navigate using lidars
     BlockSearch, // navigate through the blocks and save the path
     TurnEnd, // calculations on turn end
-    TurnAround, // turn around at the end of the block fase
+    TurnAroundStart, // reset all variables to prepare for turning
+    TurnAround1, // turn around at the end of the block fase
+    TurnAround2,
     PathCalc, // calculate the path
     PathFollow, // follow the path
-    RoundEnd,
     SquareStart,
     SquareCheck,
     SquareDoubleCheck,
-    SquareFollow
+    SquareFollow,
+    Empty,
 };
 
-// nav state
+// general nav vars
+const int MOTOR_SLOW = 125;
+const int MOTOR_FAST = 210;
+
 Axis cur_axis(position, 0, 0, 0);
 #ifdef BLOCK_MODE
-NavState current_state = NavState::LidarStart;
+NavState current_state = NavState::BlockSearch; // ALWAZS PUT TO LidarStart
 #else
-NavState current_state = NavState::BlockSearch;
+NavState current_state = NavState::SquareStart;
 #endif
+int turn_count = 0;
+int counter_clock = 1; // -1 for clockwise
 
+// path following vars
+int axisIndex = 0;
+std::vector<Axis> path;
+
+// square vars
 std::vector<float> initial_distances;
 unsigned long stop_until = 0;
 const int SEPARATION_FROM_WALL = 250;
 const int DISTANCE_TO_VISIBILITY = 100;
 
-int turn_count = 0;
-int counter_clock = 1; // -1 for clockwise
-
+// block vars
 const std::vector<Axis> counterClockAxes = {
     Axis(position, 0, 1, 0, 500),
     Axis(position, 1, 1, 1000, 1500),
@@ -71,12 +81,8 @@ const std::vector<Axis> clockAxes = {
     Axis(position, 3, -1, -1000, -500),
 };
 
-// path following vars
-int axisIndex = 0;
-std::vector<Axis> centerAxes;
-std::vector<Axis> path;
+std::vector<Axis> centerAxes = counterClockAxes;
 
-// blocks
 bool lastBlockRed = 0; // true fir red, false for true
 bool redSeen = false; // if a red block is on the current turn
 bool greenSeen = false; // same for green
@@ -148,6 +154,7 @@ void loop()
             }
 
             while (turn_count == 12 && position.x > 0) {
+                debug_msg("finished :)");
                 motorSpeed(0);
                 delay(100);
             }
@@ -171,8 +178,9 @@ void loop()
             current_state = NavState::BlockSearch;
 
             // we need to reverse everything
-            if (turn_count == 9 && lastBlockRed) {
-                current_state = NavState::TurnAround;
+            // if (turn_count == 9 && lastBlockRed) {
+            if (turn_count == 9) {
+                current_state = NavState::TurnAroundStart;
             }
             // if (turn_count == 5) {
             //     current_state = NavState::PathCalc;
@@ -180,10 +188,21 @@ void loop()
 
             break;
         }
-        case NavState::TurnAround: {
+        case NavState::TurnAroundStart: {
             debug_msg("Reached last round turn, and last block was red, turning around");
 
+            // TODO WARN SIMULATOR CODE HERE, REPLACE!!!!
+            // This makes sense if you visualize the transformation of the position on the 8
+            debug_msg("before angle: %f", imu.rotation);
+            imu.rotation -= 4 * PI * counter_clock + PI * counter_clock;
+
+            debug_msg("after angle: %f", imu.rotation);
+            position.x *= -1;
+            position.y *= -1;
+
             turn_count = 0;
+
+            // swap active center axes
             if (counter_clock == 1) {
                 centerAxes = clockAxes;
             } else {
@@ -191,6 +210,38 @@ void loop()
             }
             counter_clock *= -1;
 
+            current_state = NavState::TurnAround1;
+            motorSpeed(MOTOR_SLOW);
+            break;
+        }
+        case NavState::TurnAround1: {
+            debug_msg("turning around: %f", imu.rotation);
+            float target_angle = counter_clock == 1 ? PI / 2 : -PI / 2;
+            if (imu.rotation > target_angle + 0.2) {
+                servoAngle(-45);
+                return;
+            } else if (imu.rotation < target_angle - 0.2) {
+                servoAngle(45);
+                return;
+            } else {
+                debug_msg("Finished turn around 1");
+                motorSpeed(-MOTOR_SLOW);
+                current_state = NavState::TurnAround2;
+            }
+            break;
+        }
+        case NavState::TurnAround2: {
+            float target_angle = counter_clock == 1 ? 0 : 0;
+            if (imu.rotation > target_angle + 0.2) {
+                servoAngle(-45);
+                return;
+            } else if (imu.rotation < target_angle - 0.2) {
+                servoAngle(45);
+                return;
+            } else {
+                motorSpeed(MOTOR_SLOW);
+                current_state = NavState::BlockSearch;
+            }
             break;
         }
         case NavState::PathCalc: {
@@ -202,7 +253,7 @@ void loop()
             cur_axis = path[0];
             cur_axis.print();
             current_state = NavState::PathFollow;
-            motorSpeed(210);
+            motorSpeed(MOTOR_FAST);
             debug_msg("------------------- FINAL PATH ----------------------");
             for (Axis a : path) {
                 a.print();
@@ -232,12 +283,13 @@ void loop()
         }
         case NavState::SquareCheck: {
             if (cur_axis.finished(position) && stop_until == 0) {
+                printf("Square check start");
                 motorSpeed(0);
                 stop_until = millis() + 1500;
             }
             if (stop_until != 0 && stop_until < millis()) {
                 stop_until = 0;
-                motorSpeed(200);
+                motorSpeed(MOTOR_FAST);
                 switch (turn_count) {
                 case 0: {
                     if (left_distance > 1500) {
@@ -302,12 +354,13 @@ void loop()
         }
         case NavState::SquareDoubleCheck: {
             if (cur_axis.finished(position)) {
+                debug_msg("square double check start");
                 motorSpeed(0);
                 stop_until = millis() + 1500;
             }
             if (stop_until != 0 && stop_until < millis()) {
                 stop_until = 0;
-                motorSpeed(200);
+                motorSpeed(MOTOR_FAST);
                 turn_count++;
                 if (left_distance > 1500) {
                     counter_clock = 1;
@@ -338,11 +391,14 @@ void loop()
             }
             break;
         }
-        case SquareFollow: {
+        case NavState::SquareFollow: {
             if (cur_axis.finished(position)) {
                 turn_count++;
                 cur_axis = path[turn_count % 4];
             }
+            break;
+        }
+        case NavState::Empty: {
             break;
         }
         }
@@ -373,7 +429,6 @@ void setup()
     if (battery > 4) {
         lidarSetup();
         auto distances = lidarInitialDistances();
-        // position.y = 500 - distances[0];
         position.x = 1500 - distances[2] - 150;
         initial_distances = distances;
         lidarStart();
@@ -389,7 +444,7 @@ void setup()
     if (battery < 4) {
         motorSpeed(0);
     } else {
-        motorSpeed(200);
+        motorSpeed(MOTOR_SLOW);
     }
 
     servoPid.target = 0;
