@@ -12,9 +12,7 @@
 
 #include "nav_parameters.h"
 
-#define BLOCK_MODE
-
-PID servoPid(5.3f, 0.76f, 0.35f);
+PID servoPid(1.7f, 0.76f, 0.15f);
 Imu imu;
 Timer nav_timer(20);
 
@@ -28,31 +26,32 @@ void updatePosition(Vector* pos, float angle, int encoders)
 }
 
 enum NavState {
-    LidarStart, // navigate using lidars
+    BlockStart, // navigate using lidars
     BlockSearch, // navigate through the blocks and save the path
     TurnEnd, // calculations on turn end
     TurnAroundStart, // reset all variables to prepare for turning
     TurnAround1, // turn around at the end of the block fase
-    TurnAround2,
-    PathCalc, // calculate the path
+    TurnAround2, // second phase, in reverse
+    PathStart, // calculate the path
     PathFollow, // follow the path
     SquareStart,
     SquareCheck,
     SquareDoubleCheck,
     SquareFollow,
+
+    // debug states
+    CalibrateEncoders,
     Empty,
 };
 
+NavState current_state = NavState::BlockStart;
+
 // general nav vars
-const int MOTOR_SLOW = 125;
+const int MOTOR_SLOW = 150;
 const int MOTOR_FAST = 210;
 
 Axis cur_axis(position, 0, 0, 0);
-#ifdef BLOCK_MODE
-NavState current_state = NavState::BlockSearch; // ALWAZS PUT TO LidarStart
-#else
-NavState current_state = NavState::SquareStart;
-#endif
+
 int turn_count = 0;
 int counter_clock = 1; // -1 for clockwise
 
@@ -83,7 +82,7 @@ const std::vector<Axis> clockAxes = {
 
 std::vector<Axis> centerAxes = counterClockAxes;
 
-bool lastBlockRed = 0; // true fir red, false for true
+bool lastBlockRed = false; // true fir red, false for green
 bool redSeen = false; // if a red block is on the current turn
 bool greenSeen = false; // same for green
 
@@ -99,7 +98,7 @@ void loop()
 
         switch (current_state) {
 
-        case NavState::LidarStart: {
+        case NavState::BlockStart: {
             // left turn
             if (left_distance > TURN_TRIGGER_DISTANCE) {
                 debug_msg("locking in left turns");
@@ -178,8 +177,7 @@ void loop()
             current_state = NavState::BlockSearch;
 
             // we need to reverse everything
-            // if (turn_count == 9 && lastBlockRed) {
-            if (turn_count == 9) {
+            if (turn_count == 9 && lastBlockRed) {
                 current_state = NavState::TurnAroundStart;
             }
             // if (turn_count == 5) {
@@ -191,12 +189,8 @@ void loop()
         case NavState::TurnAroundStart: {
             debug_msg("Reached last round turn, and last block was red, turning around");
 
-            // TODO WARN SIMULATOR CODE HERE, REPLACE!!!!
             // This makes sense if you visualize the transformation of the position on the 8
-            debug_msg("before angle: %f", imu.rotation);
             imu.rotation -= 4 * PI * counter_clock + PI * counter_clock;
-
-            debug_msg("after angle: %f", imu.rotation);
             position.x *= -1;
             position.y *= -1;
 
@@ -233,10 +227,10 @@ void loop()
         case NavState::TurnAround2: {
             float target_angle = counter_clock == 1 ? 0 : 0;
             if (imu.rotation > target_angle + 0.2) {
-                servoAngle(-45);
+                servoAngle(45);
                 return;
             } else if (imu.rotation < target_angle - 0.2) {
-                servoAngle(45);
+                servoAngle(-45);
                 return;
             } else {
                 motorSpeed(MOTOR_SLOW);
@@ -244,7 +238,7 @@ void loop()
             }
             break;
         }
-        case NavState::PathCalc: {
+        case NavState::PathStart: {
             debug_msg("calculating path to follow, starting with axis:");
             // delete all data from the first stretch, we get it from the second pass
             while (path[0].turn == 0) {
@@ -283,7 +277,6 @@ void loop()
         }
         case NavState::SquareCheck: {
             if (cur_axis.finished(position) && stop_until == 0) {
-                printf("Square check start");
                 motorSpeed(0);
                 stop_until = millis() + 1500;
             }
@@ -395,6 +388,14 @@ void loop()
             if (cur_axis.finished(position)) {
                 turn_count++;
                 cur_axis = path[turn_count % 4];
+            }
+            break;
+        }
+        case NavState::CalibrateEncoders: {
+            while (position.x > 3000) {
+                motorSpeed(0);
+                debug_msg("final position: %f", position.x);
+                delay(500);
             }
             break;
         }
