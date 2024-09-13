@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <algorithm>
 #include <debug.h>
 #include <imu.h>
 #include <lidar.h>
@@ -11,7 +12,7 @@
 
 #include "nav_parameters.h"
 
-#define BLOCK_MODE
+// #define BLOCK_MODE
 
 PID servoPid(4.3f, 0.16f, 0.25f);
 Imu imu;
@@ -232,14 +233,16 @@ void loop()
             }
             if (stop_until != 0 && stop_until < millis()) {
                 stop_until = 0;
+                motorSpeed(150);
                 switch (turn_count) {
                 case 0: {
                     if (left_distance > 1500) {
                         turn_count++;
-                        cur_axis = Axis(position, turn_count, 1, 1500, 1550);
+                        debug_msg("turning");
+                        cur_axis = Axis(position, turn_count, 1, 750, 1550);
                         counter_clock = 1;
                         if (initial_distances[0] + initial_distances[1] > 900) {
-                            path.push_back(Axis(position, 0, counter_clock, 0, 500));
+                            path.push_back(Axis(position, 0, counter_clock, 250, 500));
                             // TODO: Could be more precise with left and right measurings
                             // same applies to all other cases
                             position.y = position.y + (500 - initial_distances[0]);
@@ -249,10 +252,11 @@ void loop()
                         }
                     } else if (right_distance > 1500) {
                         turn_count++;
-                        cur_axis = Axis(position, turn_count, -1, 1500, -1550);
+                        debug_msg("turning");
+                        cur_axis = Axis(position, turn_count, -1, 750, -1550);
                         counter_clock = -1;
                         if (initial_distances[0] + initial_distances[1] > 900) {
-                            path.push_back(Axis(position, 0, counter_clock, 0, 500));
+                            path.push_back(Axis(position, 0, counter_clock, -250, 500));
                             position.y = position.y + (500 - initial_distances[0]);
                         } else {
                             path.push_back(Axis(position, 0, counter_clock, 250, 500));
@@ -266,11 +270,28 @@ void loop()
                 }
                 case 1: {
                     turn_count++;
-                    if (left_distance > 1500) {
-                        cur_axis = Axis(position, turn_count, 1, 1500);
-                    } else if (right_distance > 1500) {
-                        cur_axis = Axis(position, turn_count, -1, -1500);
+                    path.push_back(cur_axis);
+                    if ((counter_clock == 1 ? left_distance : right_distance) > 1500) {
+                        cur_axis = Axis(position, turn_count, counter_clock, 1750 * counter_clock, -550);
+                    } else {
+                        cur_axis = Axis(position, turn_count, counter_clock, 2250 * counter_clock, -550);
                     }
+                    break;
+                }
+                case 2: {
+                    turn_count++;
+                    path.push_back(cur_axis);
+                    if ((counter_clock == 1 ? left_distance : right_distance) > 1500) {
+                        cur_axis = Axis(position, turn_count, counter_clock, -750, 50 * counter_clock);
+                    } else {
+                        cur_axis = Axis(position, turn_count, counter_clock, -1250, -50 * counter_clock);
+                    }
+                    break;
+                }
+                case 3: {
+                    turn_count++;
+                    path.push_back(cur_axis);
+                    // TODO: Follow when finished
                     break;
                 }
                 }
@@ -284,6 +305,7 @@ void loop()
             }
             if (stop_until != 0 && stop_until < millis()) {
                 stop_until = 0;
+                motorSpeed(150);
                 turn_count++;
                 if (left_distance > 1500) {
                     counter_clock = 1;
