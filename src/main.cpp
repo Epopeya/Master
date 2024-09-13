@@ -38,7 +38,7 @@ enum NavState {
     SquareStart,
     SquareCheck,
     SquareDoubleCheck,
-    SquareEnd
+    SquareFollow
 };
 
 // nav state
@@ -295,7 +295,8 @@ void loop()
                 case 3: {
                     turn_count++;
                     path.push_back(cur_axis);
-                    // TODO: Follow when finished
+                    cur_axis = path[0];
+                    current_state = NavState::SquareFollow;
                     break;
                 }
                 }
@@ -335,6 +336,13 @@ void loop()
                 }
                 cur_axis = Axis(position, turn_count, counter_clock, 1500 - SEPARATION_FROM_WALL, (1500 + DISTANCE_TO_VISIBILITY) * counter_clock);
                 current_state = NavState::SquareCheck;
+            }
+            break;
+        }
+        case SquareFollow: {
+            if (cur_axis.finished(position)) {
+                turn_count++;
+                cur_axis = path[turn_count % 4];
             }
             break;
         }
