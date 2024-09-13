@@ -46,7 +46,7 @@ Axis cur_axis(position, 0, 0, 0);
 #ifdef BLOCK_MODE
 NavState current_state = NavState::LidarStart;
 #else
-NavState current_state = NavState::SquareStart;
+NavState current_state = NavState::BlockSearch;
 #endif
 
 std::vector<float> initial_distances;
@@ -237,7 +237,7 @@ void loop()
             }
             if (stop_until != 0 && stop_until < millis()) {
                 stop_until = 0;
-                motorSpeed(150);
+                motorSpeed(200);
                 switch (turn_count) {
                 case 0: {
                     if (left_distance > 1500) {
@@ -247,13 +247,10 @@ void loop()
                         counter_clock = 1;
                         if (initial_distances[0] + initial_distances[1] > 900) {
                             path.push_back(Axis(position, 0, counter_clock, 500 - SEPARATION_FROM_WALL, 500));
-                            // TODO: Could be more precise with left and right measurings
-                            // same applies to all other cases
-                            position.y = position.y + (500 - initial_distances[0]);
                         } else {
                             path.push_back(Axis(position, 0, counter_clock, -500 + SEPARATION_FROM_WALL, 500));
-                            position.y = position.y + (250 - initial_distances[0]);
                         }
+                        position.y = position.y + (-500 + initial_distances[1]);
                     } else if (right_distance > 1500) {
                         turn_count++;
                         debug_msg("turning");
@@ -261,11 +258,11 @@ void loop()
                         counter_clock = -1;
                         if (initial_distances[0] + initial_distances[1] > 900) {
                             path.push_back(Axis(position, 0, counter_clock, -500 + SEPARATION_FROM_WALL, 500));
-                            position.y = position.y + (500 - initial_distances[0]);
                         } else {
                             path.push_back(Axis(position, 0, counter_clock, 500 - SEPARATION_FROM_WALL, 500));
-                            position.y = position.y + (250 + initial_distances[1]);
                         }
+                        position.y = position.y + (500 - initial_distances[0]);
+
                     } else {
                         cur_axis = Axis(position, 0, 1, 0, 500 + DISTANCE_TO_VISIBILITY * 3);
                         current_state = NavState::SquareDoubleCheck;
@@ -310,26 +307,28 @@ void loop()
             }
             if (stop_until != 0 && stop_until < millis()) {
                 stop_until = 0;
-                motorSpeed(150);
+                motorSpeed(200);
                 turn_count++;
                 if (left_distance > 1500) {
                     counter_clock = 1;
                     if (initial_distances[0] + initial_distances[1] > 900) {
+                        debug_msg("Wall not moved");
                         path.push_back(Axis(position, 0, counter_clock, 0, 500));
-                        position.y = position.y + (500 - initial_distances[0]);
                     } else {
+                        debug_msg("Wall moved!!!!!!");
                         path.push_back(Axis(position, 0, counter_clock, 250, 500));
-                        position.y = position.y + (250 - initial_distances[0]);
                     }
+                    position.y = position.y + (-500 + initial_distances[1]);
+
                 } else if (right_distance > 1500) {
                     counter_clock = -1;
                     if (initial_distances[0] + initial_distances[1] > 900) {
                         path.push_back(Axis(position, 0, counter_clock, 0, 500));
-                        position.y = position.y + (500 - initial_distances[0]);
                     } else {
                         path.push_back(Axis(position, 0, counter_clock, 250, 500));
-                        position.y = position.y + (250 + initial_distances[1]);
                     }
+                    position.y = position.y + (500 - initial_distances[0]);
+
                 } else {
                     motorSpeed(0);
                     debug_msg("🤯");
@@ -374,7 +373,7 @@ void setup()
     if (battery > 4) {
         lidarSetup();
         auto distances = lidarInitialDistances();
-        position.y = 500 - distances[0];
+        // position.y = 500 - distances[0];
         position.x = 1500 - distances[2] - 150;
         initial_distances = distances;
         lidarStart();
@@ -390,7 +389,7 @@ void setup()
     if (battery < 4) {
         motorSpeed(0);
     } else {
-        motorSpeed(150);
+        motorSpeed(200);
     }
 
     servoPid.target = 0;

@@ -6,7 +6,7 @@
 #include <navigation.h>
 
 #define RPLIDAR_MOTOR 5
-#define SMOOTHING 0.01f // lower = more smoothing
+#define SMOOTHING 0.002f // lower = more smoothing
 #define INV_SMOOTHING (1 - SMOOTHING)
 #define CHECK_ANGLE 10
 
@@ -76,12 +76,12 @@ std::vector<float> lidarInitialDistances()
                     counter_front++;
                     dist_front += distance;
                 }
-                if (angle < 95 && angle > 85) {
+                if (angle < 275 && angle > 265) {
                     debug_msg("left: %f", distance);
                     counter_left++;
                     dist_left += distance;
                 }
-                if (angle < 275 && angle > 265) {
+                if (angle < 95 && angle > 85) {
                     debug_msg("right: %f", distance);
                     counter_right++;
                     dist_right += distance;
