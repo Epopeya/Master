@@ -47,9 +47,13 @@ Axis cur_axis(position, 0, 0, 0);
 NavState current_state = NavState::LidarStart;
 #else
 NavState current_state = NavState::SquareStart;
+#endif
+
 std::vector<float> initial_distances;
 unsigned long stop_until = 0;
-#endif
+const int SEPARATION_FROM_WALL = 250;
+const int DISTANCE_TO_VISIBILITY = 100;
+
 int turn_count = 0;
 int counter_clock = 1; // -1 for clockwise
 
@@ -222,7 +226,7 @@ void loop()
             break;
         }
         case NavState::SquareStart: {
-            cur_axis = Axis(position, 0, 1, 0, 550);
+            cur_axis = Axis(position, 0, 1, 0, 500 + DISTANCE_TO_VISIBILITY);
             current_state = NavState::SquareCheck;
             break;
         }
@@ -239,31 +243,31 @@ void loop()
                     if (left_distance > 1500) {
                         turn_count++;
                         debug_msg("turning");
-                        cur_axis = Axis(position, turn_count, 1, 750, 1550);
+                        cur_axis = Axis(position, turn_count, 1, 500 + SEPARATION_FROM_WALL, 1500 + DISTANCE_TO_VISIBILITY);
                         counter_clock = 1;
                         if (initial_distances[0] + initial_distances[1] > 900) {
-                            path.push_back(Axis(position, 0, counter_clock, 250, 500));
+                            path.push_back(Axis(position, 0, counter_clock, 500 - SEPARATION_FROM_WALL, 500));
                             // TODO: Could be more precise with left and right measurings
                             // same applies to all other cases
                             position.y = position.y + (500 - initial_distances[0]);
                         } else {
-                            path.push_back(Axis(position, 0, counter_clock, -250, 500));
+                            path.push_back(Axis(position, 0, counter_clock, -500 + SEPARATION_FROM_WALL, 500));
                             position.y = position.y + (250 - initial_distances[0]);
                         }
                     } else if (right_distance > 1500) {
                         turn_count++;
                         debug_msg("turning");
-                        cur_axis = Axis(position, turn_count, -1, 750, -1550);
+                        cur_axis = Axis(position, turn_count, -1, 1000 + SEPARATION_FROM_WALL, -1550);
                         counter_clock = -1;
                         if (initial_distances[0] + initial_distances[1] > 900) {
-                            path.push_back(Axis(position, 0, counter_clock, -250, 500));
+                            path.push_back(Axis(position, 0, counter_clock, -500 + SEPARATION_FROM_WALL, 500));
                             position.y = position.y + (500 - initial_distances[0]);
                         } else {
-                            path.push_back(Axis(position, 0, counter_clock, 250, 500));
+                            path.push_back(Axis(position, 0, counter_clock, 500 - SEPARATION_FROM_WALL, 500));
                             position.y = position.y + (250 + initial_distances[1]);
                         }
                     } else {
-                        cur_axis = Axis(position, 0, 1, 0, 800);
+                        cur_axis = Axis(position, 0, 1, 0, 500 + DISTANCE_TO_VISIBILITY * 3);
                         current_state = NavState::SquareDoubleCheck;
                     }
                     break;
@@ -272,9 +276,9 @@ void loop()
                     turn_count++;
                     path.push_back(cur_axis);
                     if ((counter_clock == 1 ? left_distance : right_distance) > 1500) {
-                        cur_axis = Axis(position, turn_count, counter_clock, 1750 * counter_clock, -550);
+                        cur_axis = Axis(position, turn_count, counter_clock, (1500 + SEPARATION_FROM_WALL) * counter_clock, -500 - DISTANCE_TO_VISIBILITY);
                     } else {
-                        cur_axis = Axis(position, turn_count, counter_clock, 2250 * counter_clock, -550);
+                        cur_axis = Axis(position, turn_count, counter_clock, (2000 + SEPARATION_FROM_WALL) * counter_clock, -500 - DISTANCE_TO_VISIBILITY);
                     }
                     break;
                 }
@@ -282,9 +286,9 @@ void loop()
                     turn_count++;
                     path.push_back(cur_axis);
                     if ((counter_clock == 1 ? left_distance : right_distance) > 1500) {
-                        cur_axis = Axis(position, turn_count, counter_clock, -750, 50 * counter_clock);
+                        cur_axis = Axis(position, turn_count, counter_clock, -500 - SEPARATION_FROM_WALL, (500 - DISTANCE_TO_VISIBILITY) * counter_clock);
                     } else {
-                        cur_axis = Axis(position, turn_count, counter_clock, -1250, -50 * counter_clock);
+                        cur_axis = Axis(position, turn_count, counter_clock, -1000 - SEPARATION_FROM_WALL, (500 - DISTANCE_TO_VISIBILITY) * counter_clock);
                     }
                     break;
                 }
@@ -329,7 +333,7 @@ void loop()
                     motorSpeed(0);
                     debug_msg("🤯");
                 }
-                cur_axis = Axis(position, turn_count, counter_clock, 1500, 1550 * counter_clock);
+                cur_axis = Axis(position, turn_count, counter_clock, 1500 - SEPARATION_FROM_WALL, (1500 + DISTANCE_TO_VISIBILITY) * counter_clock);
                 current_state = NavState::SquareCheck;
             }
             break;
